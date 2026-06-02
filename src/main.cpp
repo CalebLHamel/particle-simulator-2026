@@ -1,6 +1,7 @@
 #include <iostream>
 #include "raylib.h"
-
+#include "particle.h"
+#include "raymath.h"
 
 int main()
 {
@@ -13,9 +14,17 @@ int main()
     const int screenWidth = 800;
     const int screenHeight = 450;
 
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - input keys");
+    InitWindow(screenWidth, screenHeight, "Learning Things");
 
-    Vector2 ballPosition = { (float)screenWidth/2, (float)screenHeight/2 };
+    Vector2 positionOffset = { (float)screenWidth/2, (float)screenHeight/2 };
+    Vector2 textPositionOffset = { 0.0, 0.0 };
+
+    Particle* particles[9];
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            particles[i*3+j] = new Particle(20.0, Vector2 {(float)50*i, (float)50*j});
+        }
+    }
 
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
@@ -25,10 +34,16 @@ int main()
     {
         // Update
         //----------------------------------------------------------------------------------
-        if (IsKeyDown(KEY_RIGHT)) ballPosition.x += 2.0f;
-        if (IsKeyDown(KEY_LEFT)) ballPosition.x -= 2.0f;
-        if (IsKeyDown(KEY_UP)) ballPosition.y -= 2.0f;
-        if (IsKeyDown(KEY_DOWN)) ballPosition.y += 2.0f;
+        if (IsKeyDown(KEY_RIGHT)) positionOffset.x += 4.0f;
+        if (IsKeyDown(KEY_LEFT)) positionOffset.x -= 4.0f;
+        if (IsKeyDown(KEY_UP)) positionOffset.y -= 4.0f;
+        if (IsKeyDown(KEY_DOWN)) positionOffset.y += 4.0f;
+
+        if (IsKeyDown(KEY_D)) textPositionOffset.x += 4.0f;
+        if (IsKeyDown(KEY_A)) textPositionOffset.x -= 4.0f;
+        if (IsKeyDown(KEY_W)) textPositionOffset.y -= 4.0f;
+        if (IsKeyDown(KEY_S)) textPositionOffset.y += 4.0f;
+
         //----------------------------------------------------------------------------------
 
         // Draw
@@ -37,12 +52,22 @@ int main()
 
             ClearBackground(RAYWHITE);
 
-            DrawText("move the ball with arrow keys", 10, 10, 20, DARKGRAY);
+            int x = textPositionOffset.x;
+            int y = textPositionOffset.y;
+            DrawText("move the ball with arrow keys\nmove the text with wasd", 10+x, 10+y, 20, DARKGRAY);
 
-            DrawCircleV(ballPosition, 50, MAROON);
+            for (int i = 0; i<9; i++) {
+                Particle* p = particles[i];
+                Vector2 v = Vector2Add(p->getPosition(), positionOffset);
+                DrawCircleV(v, p->getRadius(), MAROON);
+            }
 
         EndDrawing();
         //----------------------------------------------------------------------------------
+    }
+
+    for (int i=0; i<9; i++) {
+        delete particles[i];
     }
 
     // De-Initialization
