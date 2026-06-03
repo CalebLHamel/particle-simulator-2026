@@ -6,3 +6,6 @@ I also took a bit of time to explore what CMake could do, and use it to build th
 
 A while back, I made a rudimentary particle simulator in Python. 
 Part of my intent for this project is to re-do the particle simulator with better programming practices.
+
+Here's a google drive link to some videos that I may add more to as I go along:
+https://drive.google.com/drive/folders/19TWuLGhYAlDXtlmH2cYbZSOZTL9R0LlX?usp=sharing
