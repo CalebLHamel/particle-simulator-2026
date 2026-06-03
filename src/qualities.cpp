@@ -9,9 +9,8 @@ DefaultQualities::DefaultQualities() {};
  * Takes a DefaultQualities, sets the value of a quality type, and returns it again.
  * Intended for chained useage after the constructor.
  */
-DefaultQualities* DefaultQualities::with(QualityTypes quality, float value) {
+void DefaultQualities::SetQuality(QualityTypes quality, float value) {
     this->qualities[quality] = value;
-    return this;
 };
 
 /**

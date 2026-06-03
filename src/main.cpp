@@ -25,6 +25,9 @@ int main()
     // Additional setup
     //--------------------------------------------------------------------------------------
     DefaultQualities test_qualities = DefaultQualities();
+    test_qualities.SetQuality(QualityTypes::Mass, 10.0);
+    test_qualities.SetQuality(QualityTypes::Charge, 5.0);
+    
     ParticleType test_particles = ParticleType(15.0, test_qualities);
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {

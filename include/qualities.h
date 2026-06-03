@@ -25,7 +25,7 @@ public:
     DefaultQualities();
 
     // Sets a quality value and returns it again.
-    DefaultQualities* with(QualityTypes quality, float value);
+    void SetQuality(QualityTypes quality, float value);
 
     // Gets the value of a quality type.
     float getDefaultQuality(QualityTypes type);
