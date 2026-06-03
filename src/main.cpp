@@ -67,6 +67,23 @@ int main()
                 DrawCircleV(pos, test_particles.getRadius(), MAROON);   // Draw a circle at the particle's position.
                 pos = Vector2Add(pos, test_particles.getVelocity(i));   // Get the particle's velocity.
                 test_particles.setPosition(i, pos);                     // Use the velocity to update the particle's position.
+
+                pos = test_particles.getPosition(i);
+                Vector2 vel = test_particles.getVelocity(i);
+                if (pos.x > screenWidth && vel.x > 0) {
+                    vel.x *= -1;
+                    test_particles.setVelocity(i, vel);
+                } else if (pos.x < 0 && vel.x < 0) {
+                    vel.x *= -1;
+                    test_particles.setVelocity(i, vel);
+                }
+                if (pos.y > screenHeight && vel.y > 0) {
+                    vel.y *= -1;
+                    test_particles.setVelocity(i, vel);
+                } else if (pos.y < 0 && vel.y < 0) {
+                    vel.y *= -1;
+                    test_particles.setVelocity(i, vel);
+                }
             }
 
         EndDrawing();
