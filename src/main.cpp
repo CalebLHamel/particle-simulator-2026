@@ -32,7 +32,7 @@ int main()
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             Vector2 new_position = Vector2 {(float)50*i + positionOffset.x, (float)50*j + positionOffset.y};
-            Vector2 new_velocity = Vector2 {(float)i, (float)j};
+            Vector2 new_velocity = Vector2 {(float)(i-1)*j, (float)(j-1)*i};
             test_particles.addParticle(new_position, new_velocity);
         }
     }
@@ -86,6 +86,31 @@ int main()
                 } else if (pos.y < 0 && vel.y < 0) {
                     vel.y *= -1;
                     test_particles.setVelocity(i, vel);
+                }
+            }
+
+            for (int i = 0; i<9; i++) {
+                for (int j=i+1; j<9; j++) {
+                    Vector2 pos1 = test_particles.getPosition(i);
+                    Vector2 pos2 = test_particles.getPosition(j);
+                    float m = test_particles.getQuality(QualityTypes::Mass);
+
+                    Vector2 diff = Vector2Subtract(pos2, pos1);
+                    float diff_magnitude_squared = Vector2LengthSqr(diff);
+                    if (diff_magnitude_squared < 30) {
+                        continue;
+                    }
+                    
+                    float acc_magnitude = (m*m) / diff_magnitude_squared;
+                    Vector2 acc = Vector2Scale(Vector2Normalize(diff), 3.0*acc_magnitude / m);
+
+                    Vector2 vel1 = test_particles.getVelocity(i);
+                    Vector2 vel2 = test_particles.getVelocity(j);
+                    
+                    vel1 = Vector2Add(vel1, acc);
+                    vel2 = Vector2Subtract(vel2, acc);
+                    test_particles.setVelocity(i, vel1);
+                    test_particles.setVelocity(j, vel2);
                 }
             }
 
