@@ -2,11 +2,12 @@
 #include "raylib.h"
 #include "particle.h"
 #include "raymath.h"
+#include "particle_type.h"
 
 int main()
 {
     /*
-     * Example taken from Raylib website.
+     * Example taken and modified from Raylib website.
      */
 
     // Initialization
@@ -18,18 +19,24 @@ int main()
 
     Vector2 positionOffset = { (float)screenWidth/2, (float)screenHeight/2 };
     Vector2 textPositionOffset = { 0.0, 0.0 };
-
-    Particle* particles[9];
+    
+    SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
+    
+    // Additional setup
+    //--------------------------------------------------------------------------------------
+    DefaultQualities test_qualities = DefaultQualities();
+    ParticleType test_particles = ParticleType(15.0, test_qualities);
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            particles[i*3+j] = new Particle(20.0, Vector2 {(float)50*i, (float)50*j});
+            Vector2 new_position = Vector2 {(float)50*i + positionOffset.x, (float)50*j + positionOffset.y};
+            Vector2 new_velocity = Vector2 {(float)i, (float)j};
+            test_particles.addParticle(new_position, new_velocity);
         }
     }
 
-    SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
-    //--------------------------------------------------------------------------------------
-
+    
     // Main game loop
+    //--------------------------------------------------------------------------------------
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
         // Update
@@ -44,8 +51,6 @@ int main()
         if (IsKeyDown(KEY_W)) textPositionOffset.y -= 4.0f;
         if (IsKeyDown(KEY_S)) textPositionOffset.y += 4.0f;
 
-        //----------------------------------------------------------------------------------
-
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
@@ -56,18 +61,16 @@ int main()
             int y = textPositionOffset.y;
             DrawText("move the ball with arrow keys\nmove the text with wasd", 10+x, 10+y, 20, DARKGRAY);
 
+            // For every test particle.
             for (int i = 0; i<9; i++) {
-                Particle* p = particles[i];
-                Vector2 v = Vector2Add(p->getPosition(), positionOffset);
-                DrawCircleV(v, p->getRadius(), MAROON);
+                Vector2 pos = test_particles.getPosition(i);            // Get the position of the particle.
+                DrawCircleV(pos, test_particles.getRadius(), MAROON);   // Draw a circle at the particle's position.
+                pos = Vector2Add(pos, test_particles.getVelocity(i));   // Get the particle's velocity.
+                test_particles.setPosition(i, pos);                     // Use the velocity to update the particle's position.
             }
 
         EndDrawing();
         //----------------------------------------------------------------------------------
-    }
-
-    for (int i=0; i<9; i++) {
-        delete particles[i];
     }
 
     // De-Initialization

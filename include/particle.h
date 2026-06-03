@@ -3,6 +3,8 @@
 
 #include "raylib.h"
 
+// Unused class. Was once used for trying out some things.
+
 class Particle {
 private:
     float radius;
