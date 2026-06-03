@@ -28,7 +28,7 @@ int main()
     test_qualities.SetQuality(QualityTypes::Mass, 10.0);
     test_qualities.SetQuality(QualityTypes::Charge, 5.0);
     
-    ParticleType test_particles = ParticleType(15.0, test_qualities);
+    ParticleType test_particles = ParticleType(15.0, test_qualities, Color{240, 50, 20, 255});
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             Vector2 new_position = Vector2 {(float)50*i + positionOffset.x, (float)50*j + positionOffset.y};
@@ -73,7 +73,7 @@ int main()
             // For every test particle.
             for (int i = 0; i<temp_num_particles; i++) {
                 Vector2 pos = test_particles.getPosition(i);            // Get the position of the particle.
-                DrawCircleV(pos, test_particles.getRadius(), MAROON);   // Draw a circle at the particle's position.
+                DrawCircleV(pos, test_particles.getRadius(), test_particles.getDefaultColor());   // Draw a circle at the particle's position.
                 pos = Vector2Add(pos, test_particles.getVelocity(i));   // Get the particle's velocity.
                 test_particles.setPosition(i, pos);                     // Use the velocity to update the particle's position.
 

@@ -1,12 +1,13 @@
 #include "particle_type.h"
 
 // Constructor.
-ParticleType::ParticleType(float radius, DefaultQualities qualities) {
+ParticleType::ParticleType(float radius, DefaultQualities qualities, Color color) {
     this->radius = radius;
     this->default_qualities = qualities;
 
     this->positions = std::vector<Vector2>();
     this->velocities = std::vector<Vector2>();
+    this->default_color = color;
 };
 
 /**
@@ -81,3 +82,10 @@ void ParticleType::setVelocity(int index, Vector2 velocity) {
 float ParticleType::getRadius() {
     return this->radius;
 };
+
+/**
+ * Gets the default color of this type of particle.
+ */
+Color ParticleType::getDefaultColor() {
+    return this->default_color;
+}

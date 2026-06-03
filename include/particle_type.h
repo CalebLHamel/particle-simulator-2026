@@ -22,9 +22,11 @@ private:
     // The default qualities, such as mass, or charge, of all particles of this type.
     DefaultQualities default_qualities;
 
+    Color default_color;
+
 public:
     // Constructor.
-    ParticleType(float radius, DefaultQualities qualities);
+    ParticleType(float radius, DefaultQualities qualities, Color color);
 
     // Adds a particle with initial position and velocity.
     void addParticle(Vector2 position, Vector2 velocity);
@@ -51,6 +53,8 @@ public:
 
     // Get the radius of this type of particle.
     float getRadius();
+
+    Color getDefaultColor();
 };
 
 #endif
