@@ -12,8 +12,8 @@ int main()
 
     // Initialization
     //--------------------------------------------------------------------------------------
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+    const int screenWidth = 1600;
+    const int screenHeight = 900;
 
     InitWindow(screenWidth, screenHeight, "Learning Things");
 
@@ -37,7 +37,7 @@ int main()
         }
     }
 
-    
+    int temp_num_particles = 9;
     // Main game loop
     //--------------------------------------------------------------------------------------
     while (!WindowShouldClose())    // Detect window close button or ESC key
@@ -54,6 +54,12 @@ int main()
         if (IsKeyDown(KEY_W)) textPositionOffset.y -= 4.0f;
         if (IsKeyDown(KEY_S)) textPositionOffset.y += 4.0f;
 
+        if (IsKeyPressed(KEY_E) || IsKeyDown(KEY_R)) { // E for 1 until next press. R for 1 per frame while held.
+            Vector2 position = GetMousePosition();
+            test_particles.addParticle(position, Vector2{0.0,0.0});
+            temp_num_particles += 1;
+        }
+
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
@@ -65,7 +71,7 @@ int main()
             DrawText("move the ball with arrow keys\nmove the text with wasd", 10+x, 10+y, 20, DARKGRAY);
 
             // For every test particle.
-            for (int i = 0; i<9; i++) {
+            for (int i = 0; i<temp_num_particles; i++) {
                 Vector2 pos = test_particles.getPosition(i);            // Get the position of the particle.
                 DrawCircleV(pos, test_particles.getRadius(), MAROON);   // Draw a circle at the particle's position.
                 pos = Vector2Add(pos, test_particles.getVelocity(i));   // Get the particle's velocity.
@@ -73,24 +79,25 @@ int main()
 
                 pos = test_particles.getPosition(i);
                 Vector2 vel = test_particles.getVelocity(i);
-                if (pos.x > screenWidth && vel.x > 0) {
-                    vel.x *= -1;
+                int radius = test_particles.getRadius();
+                if (pos.x > screenWidth-radius && vel.x > 0) {
+                    vel.x *= -0.5;
                     test_particles.setVelocity(i, vel);
-                } else if (pos.x < 0 && vel.x < 0) {
-                    vel.x *= -1;
+                } else if (pos.x < radius && vel.x < 0) {
+                    vel.x *= -0.5;
                     test_particles.setVelocity(i, vel);
                 }
-                if (pos.y > screenHeight && vel.y > 0) {
-                    vel.y *= -1;
+                if (pos.y > screenHeight-radius && vel.y > 0) {
+                    vel.y *= -0.5;
                     test_particles.setVelocity(i, vel);
-                } else if (pos.y < 0 && vel.y < 0) {
-                    vel.y *= -1;
+                } else if (pos.y < radius && vel.y < 0) {
+                    vel.y *= -0.5;
                     test_particles.setVelocity(i, vel);
                 }
             }
 
-            for (int i = 0; i<9; i++) {
-                for (int j=i+1; j<9; j++) {
+            for (int i = 0; i<temp_num_particles; i++) {
+                for (int j=i+1; j<temp_num_particles; j++) {
                     Vector2 pos1 = test_particles.getPosition(i);
                     Vector2 pos2 = test_particles.getPosition(j);
                     float m = test_particles.getQuality(QualityTypes::Mass);

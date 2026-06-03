@@ -16,6 +16,7 @@ private:
     
     // The positions and velocities of all particles of this type.
     std::vector<Vector2> positions;
+    std::vector<Vector2> prior_positions;
     std::vector<Vector2> velocities;
     
     // The default qualities, such as mass, or charge, of all particles of this type.
@@ -35,6 +36,13 @@ public:
     Vector2 getPosition(int index);
     // Set a particle's position.
     void setPosition(int index, Vector2 position);
+
+    // Get a particles's prior position.
+    Vector2 getPriorPosition(int index);
+    // Set a particle's position.
+    void setPriorPosition(int index, Vector2 position);
+
+    void readyForNextPosition();
 
     // Get a particle's velocity.
     Vector2 getVelocity(int index);
