@@ -52,10 +52,6 @@ public:
     // Set a particle's velocity.
     void setVelocity(int index, Vector2 velocity);
 
-    void addMomentumChange(int index, Vector2 change);
-
-    void applyMomentumChanges();
-
     // Get the radius of this type of particle.
     float getRadius();
 

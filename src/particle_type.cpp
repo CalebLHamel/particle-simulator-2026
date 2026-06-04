@@ -87,17 +87,6 @@ float ParticleType::getRadius() {
     return this->radius;
 };
 
-void ParticleType::addMomentumChange(int index, Vector2 change) {
-    this->momentum_changes[index] = Vector2Add(this->momentum_changes[index], change);
-};
-
-void ParticleType::applyMomentumChanges() {
-    for (int i=0; i<this->velocities.size(); i++) {
-        this->velocities[i] = Vector2Add(this->velocities[i], this->momentum_changes[i]);
-        this->momentum_changes[i] = Vector2{0,0};
-    }
-};
-
 /**
  * Gets the default color of this type of particle.
  */
