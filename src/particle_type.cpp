@@ -1,4 +1,5 @@
 #include "particle_type.h"
+#include <raymath.h>
 
 // Constructor.
 ParticleType::ParticleType(float radius, DefaultQualities qualities, Color color) {
@@ -6,7 +7,9 @@ ParticleType::ParticleType(float radius, DefaultQualities qualities, Color color
     this->default_qualities = qualities;
 
     this->positions = std::vector<Vector2>();
+    this->prior_positions = std::vector<Vector2>();
     this->velocities = std::vector<Vector2>();
+    this->momentum_changes = std::vector<Vector2>();
     this->default_color = color;
 };
 
@@ -17,6 +20,7 @@ void ParticleType::addParticle(Vector2 position, Vector2 velocity) {
     this->positions.push_back(position);
     this->prior_positions.push_back(position);
     this->velocities.push_back(velocity);
+    this->momentum_changes.push_back(Vector2{0,0});
 };
 
 /**
@@ -81,6 +85,17 @@ void ParticleType::setVelocity(int index, Vector2 velocity) {
  */
 float ParticleType::getRadius() {
     return this->radius;
+};
+
+void ParticleType::addMomentumChange(int index, Vector2 change) {
+    this->momentum_changes[index] = Vector2Add(this->momentum_changes[index], change);
+};
+
+void ParticleType::applyMomentumChanges() {
+    for (int i=0; i<this->velocities.size(); i++) {
+        this->velocities[i] = Vector2Add(this->velocities[i], this->momentum_changes[i]);
+        this->momentum_changes[i] = Vector2{0,0};
+    }
 };
 
 /**

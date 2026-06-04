@@ -18,7 +18,8 @@ private:
     std::vector<Vector2> positions;
     std::vector<Vector2> prior_positions;
     std::vector<Vector2> velocities;
-    
+    std::vector<Vector2> momentum_changes;
+
     // The default qualities, such as mass, or charge, of all particles of this type.
     DefaultQualities default_qualities;
 
@@ -50,6 +51,10 @@ public:
     Vector2 getVelocity(int index);
     // Set a particle's velocity.
     void setVelocity(int index, Vector2 velocity);
+
+    void addMomentumChange(int index, Vector2 change);
+
+    void applyMomentumChanges();
 
     // Get the radius of this type of particle.
     float getRadius();
