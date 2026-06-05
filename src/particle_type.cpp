@@ -15,6 +15,9 @@ float ParticleType::getQuality(QualityTypes type) {
     return this->default_qualities.getQuality(type);
 };
 
+/**
+ * Gets the default qualities set of this type of particle.
+ */
 Qualities ParticleType::getQualities() {
     return this->default_qualities;
 };
