@@ -15,20 +15,20 @@ enum QualityTypes {
 /**
  * A set of qualities and values.
  */
-class DefaultQualities {
+class Qualities {
 private:
     // Each quality type has a floating point value.
     float qualities[QualityTypes::COUNT];
 
 public:
     // Constructor.
-    DefaultQualities();
+    Qualities();
 
     // Sets a quality value and returns it again.
-    void SetQuality(QualityTypes quality, float value);
+    void setQuality(QualityTypes quality, float value);
 
     // Gets the value of a quality type.
-    float getDefaultQuality(QualityTypes type);
+    float getQuality(QualityTypes type);
 };
 
 #endif

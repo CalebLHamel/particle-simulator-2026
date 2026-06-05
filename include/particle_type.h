@@ -2,55 +2,29 @@
 #define PARTICLE_TYPE_H
 
 #include "raylib.h"
-#include "particle.h"
 #include "qualities.h"
-#include <vector>
 
 /**
  * Holds a type of particle that can be replicated a lot.
  */
 class ParticleType {
-private:
+protected:
     // The particle's radius. Consistent across all particles of the same type.
     float radius;
-    
-    // The positions and velocities of all particles of this type.
-    std::vector<Vector2> positions;
-    std::vector<Vector2> prior_positions;
-    std::vector<Vector2> velocities;
-    std::vector<Vector2> momentum_changes;
 
     // The default qualities, such as mass, or charge, of all particles of this type.
-    DefaultQualities default_qualities;
+    Qualities default_qualities;
 
     Color default_color;
 
 public:
     // Constructor.
-    ParticleType(float radius, DefaultQualities qualities, Color color);
-
-    // Adds a particle with initial position and velocity.
-    void addParticle(Vector2 position, Vector2 velocity);
+    ParticleType(float radius, Qualities qualities, Color color);
 
     // Gets the value of a quality of the particle type.
     float getQuality(QualityTypes type);
 
-    // Get a particles's position.
-    Vector2 getPosition(int index);
-    // Set a particle's position.
-    void setPosition(int index, Vector2 position);
-
-    // Get a particles's prior position.
-    Vector2 getPriorPosition(int index);
-    // Set a particle's position.
-    void setPriorPosition(int index, Vector2 position);
-
-    void readyForNextPosition();
-
-    // Get a particle's velocity.
-    Vector2 getVelocity(int index);
-    // Set a particle's velocity.
-    void setVelocity(int index, Vector2 velocity);
+    Qualities getQualities();
 
     // Get the radius of this type of particle.
     float getRadius();

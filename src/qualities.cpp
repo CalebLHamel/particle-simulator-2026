@@ -3,19 +3,19 @@
 /**
  * Constructor.
  */
-DefaultQualities::DefaultQualities() {};
+Qualities::Qualities() {};
 
 /**
  * Takes a DefaultQualities, sets the value of a quality type, and returns it again.
  * Intended for chained useage after the constructor.
  */
-void DefaultQualities::SetQuality(QualityTypes quality, float value) {
+void Qualities::setQuality(QualityTypes quality, float value) {
     this->qualities[quality] = value;
 };
 
 /**
  * Gets the value of a quality type.
  */
-float DefaultQualities::getDefaultQuality(QualityTypes type) {
+float Qualities::getQuality(QualityTypes type) {
     return this->qualities[type];
 };
