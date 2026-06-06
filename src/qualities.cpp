@@ -1,4 +1,5 @@
 #include "qualities.h"
+#include <cstddef>
 
 /**
  * Constructor.
@@ -19,3 +20,12 @@ void Qualities::setQuality(QualityTypes quality, float value) {
 float Qualities::getQuality(QualityTypes type) {
     return this->qualities[type];
 };
+
+/**
+ * Add the qualities of another set to this one.
+ */
+void Qualities::addQualities(Qualities qualities) {
+    for (size_t i=0; i<COUNT; i+=1) {
+        this->qualities[i] += qualities.qualities[i];
+    }
+}

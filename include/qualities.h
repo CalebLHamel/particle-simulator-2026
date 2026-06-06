@@ -29,6 +29,9 @@ public:
 
     // Gets the value of a quality type.
     float getQuality(QualityTypes type);
+
+    // Element-wise add another set of qualities into this one.
+    void addQualities(Qualities qualities);
 };
 
 #endif
