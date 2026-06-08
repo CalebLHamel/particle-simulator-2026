@@ -6,14 +6,15 @@
 #include "particle.hpp"
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include "simulation.hpp"
-
-// TODO: Modularize the simulation. I'll likely do so as I optimize it along the way and continue cleaning up.
+#include "rlgl.h"
 
 int main()
 {
     /*
      * This is an extensive modification of a basic example from Raylib's website.
+     * Hardly any of the original remains by this point.
      */
 
     // Initialization
@@ -48,9 +49,10 @@ int main()
     ParticleType types[3] = {test_particle_type0, test_particle_type1, test_particle_type2};
     
     // The simulation itself.
-    size_t chunks_wide = 64;
-    size_t chunks_tall = 40;
-    Simulation simulation = Simulation(chunks_wide, chunks_tall, 25, 1000, 5);
+    size_t chunks_wide = 256;
+    size_t chunks_tall = 160;
+    float chunk_size = 50;
+    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1000, 20);
     
     // Main loop
     //--------------------------------------------------------------------------------------
@@ -58,7 +60,22 @@ int main()
     // Some variable for use in the loop.
     int type_selection = 0;
     Vector2 launch_velocity = Vector2{0,0};
-
+    Vector2 camera_offset = Vector2{screenWidth/2, screenHeight/2};
+    Vector2 camera_position = Vector2{0,0};
+    float camera_scale = 1.0;
+    
+    // Creating a basic circle texture.
+    int textureSize = 128;
+    Image circle_image = GenImageColor(textureSize, textureSize, BLANK);
+    ImageDrawCircle(&circle_image, textureSize/2, textureSize/2, textureSize/2, WHITE);
+    Texture2D circle_texture = LoadTextureFromImage(circle_image);
+    UnloadImage(circle_image); // Unloading CPU-side image.
+    
+    // Used for the rendering loop.
+    std::vector<Vector2> positions = std::vector<Vector2>(100000);
+    std::vector<float> radii = std::vector<float>(100000);
+    std::vector<Color> colors = std::vector<Color>(100000);
+    
     while (!WindowShouldClose())    // Detect window close button or ESC keyc
     {
         // Arrow keys affect initial velocity of new particles.
@@ -67,25 +84,39 @@ int main()
         if (IsKeyPressed(KEY_UP))      launch_velocity.y -= 1.0f;
         if (IsKeyPressed(KEY_DOWN))    launch_velocity.y += 1.0f;
 
+        // WASD move the camera around.
+        if (IsKeyDown(KEY_A))    camera_position.x -= 10.0f * camera_scale;
+        if (IsKeyDown(KEY_D))    camera_position.x += 10.0f * camera_scale;
+        if (IsKeyDown(KEY_W))    camera_position.y -= 10.0f * camera_scale;
+        if (IsKeyDown(KEY_S))    camera_position.y += 10.0f * camera_scale;
+
         // E for 1 particle until next press. R for 1 per frame while held.
         if (IsKeyPressed(KEY_E) || IsKeyDown(KEY_R)) {
             Vector2 position = GetMousePosition();
+            position = Vector2{(position.x-camera_offset.x)*camera_scale+camera_offset.x+camera_position.x,(position.y-camera_offset.y)*camera_scale+camera_offset.y+camera_position.y};
+
             Particle new_particle = Particle::makeParticleFromType(types[type_selection], position, launch_velocity);
             simulation.addParticle(new_particle);
             //particles.push_back(Particle::makeParticleFromType(types[type_selection], position, launch_velocity));
         }
-        // Spawns 9 particles at a time, per frame, while T is held.
+        // Spawns many particles at a time, per frame, while T is held.
         if (IsKeyDown(KEY_T)) {
-            Vector2 base_position = GetMousePosition();
+            Vector2 position = GetMousePosition();
+            Vector2 base_position = Vector2{(position.x-camera_offset.x)*camera_scale+camera_offset.x+camera_position.x,(position.y-camera_offset.y)*camera_scale+camera_offset.y+camera_position.y};
+
             float offset = types[type_selection].getRadius()*10;
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
+            for (int i = 0; i < 5; i++) {
+                for (int j = 0; j < 5; j++) {
                     Vector2 newpos = Vector2Add(base_position, Vector2{i*offset, j*offset});
                     Particle new_particle = Particle::makeParticleFromType(types[type_selection], newpos, launch_velocity);
                     simulation.addParticle(new_particle);
                 }
             } 
         }
+
+        // Z zooms in, X zooms out.
+        if (IsKeyDown(KEY_Z)) camera_scale = std::max(0.1f,camera_scale - 0.1f);
+        if (IsKeyDown(KEY_X)) camera_scale = camera_scale + 0.1f;
 
         // Number row used to select types.
         if (IsKeyPressed(KEY_ONE)) {
@@ -99,34 +130,66 @@ int main()
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
+            // Grey background/
+            ClearBackground(Color{100,100,100,255});
 
-            ClearBackground(RAYWHITE);
+            // White simualtion area.
+            DrawRectangle((-camera_offset.x-camera_position.x)/camera_scale+camera_offset.x,(-camera_offset.y-camera_position.y)/camera_scale+camera_offset.y,chunks_wide*chunk_size/camera_scale, chunks_tall*chunk_size/camera_scale, RAYWHITE);
             
+            // The bound of where the camera can see particles.
+            float camera_left_bound = std::max(0.0f,(camera_position.x + camera_offset.x) - (screenWidth/2) * camera_scale);
+            float camera_right_bound = std::max(0.0f,(camera_position.x + camera_offset.x) + (screenWidth/2) * camera_scale);
+            float camera_upper_bound = std::max(0.0f,(camera_position.y + camera_offset.y) - (screenHeight/2) * camera_scale);
+            float camera_lower_bound = std::max(0.0f,(camera_position.y + camera_offset.y) + (screenHeight/2) * camera_scale);
+
+            // The bounds of what chunks are visible.
+            size_t xo = floor(camera_left_bound / chunk_size);
+            size_t yo = floor(camera_upper_bound / chunk_size);
+            size_t xf = std::min(chunks_wide, (size_t)ceil(camera_right_bound / chunk_size));
+            size_t yf = std::min(chunks_tall, (size_t)ceil(camera_lower_bound / chunk_size));
+
             // For each chunk.
-            for (size_t x = 0; x < chunks_wide; x += 1) {
-                for (size_t y = 0; y < chunks_tall; y += 1) {
+            size_t j = 0;
+            for (size_t x = xo; x < xf; x += 1) {
+                for (size_t y = yo; y < yf; y += 1) {
                     // For each particle in the chunk.
                     std::vector<Particle>* particles_in_chunk = simulation.getParticlesInChunk(x,y);
                     
                     // Draw the particle.
                     for (size_t i = 0; i < particles_in_chunk->size(); i += 1) {
                         Particle* particle = &(*particles_in_chunk)[i];
-                        DrawCircleV(particle->getPosition(), particle->getRadius(), particle->getColor());
+                        Vector2 position = Vector2Scale(Vector2Subtract(Vector2Subtract(particle->getPosition(), camera_position), camera_offset), 1/camera_scale);
+                        position = Vector2Add(position, camera_offset);
+                        positions[j] = position;
+                        radii[j] = particle->getRadius() / camera_scale;
+                        colors[j] = particle->getColor();
+                        j += 1;
                     }
                 }
             }
-            
+
+            // Draw a circle texture, appropiately scaled and coloured, for every particle that is visible.
+            Rectangle source = {0,0,(float)circle_texture.width, (float)circle_texture.height};
+            for (size_t k=0; k<j; k+=1) {
+                float r = radii[k];
+                Rectangle destination = {positions[k].x-r, positions[k].y-r, r*2, r*2};
+                DrawTexturePro(circle_texture, source, destination, {0,0}, 0.0f, colors[k]);
+            }
+
             // Background for some display information.
-            DrawRectangle(5,5,275, 125, Color{30,30,30,200});
+            DrawRectangle(5,5,375, 125, Color{30,30,30,200});
             
             DrawFPS(10,10);
             
             const char *text = TextFormat("Number of Particles: %d", simulation.getCount());
             DrawText(text, 10,40, 20, WHITE);
-            
+
+            const char *text2 = TextFormat("Camera: (%d, %d). Zoom: %f", (int)camera_position.x, (int)camera_position.y, (float)(1/camera_scale));
+            DrawText(text2, 10,70, 20, WHITE);
+
             const char *text3 = TextFormat("Launch Velocity: (%d, %d)", (int)launch_velocity.x, (int)launch_velocity.y);
             DrawText(text3, 10, 100, 20, WHITE);
-        
+
         EndDrawing();
 
         simulation.moveParticles();
