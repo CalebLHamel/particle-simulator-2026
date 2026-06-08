@@ -1,8 +1,8 @@
-#ifndef SIMULATION_H
-#define SIMULATION_H
+#ifndef SIMULATION_HPP
+#define SIMULATION_HPP
 
 #include <vector>
-#include "particle.h"
+#include "particle.hpp"
 
 class Chunk {
 private:

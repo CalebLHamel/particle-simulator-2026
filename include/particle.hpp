@@ -1,8 +1,8 @@
-#ifndef PARTICLE_H
-#define PARTICLE_H
+#ifndef PARTICLE_HPP
+#define PARTICLE_HPP
 
 #include "raylib.h"
-#include "particle_type.h"
+#include "particle_type.hpp"
 
 /**
  * The particle object used in the simulation.

@@ -1,5 +1,5 @@
-#ifndef QUALITIES_H
-#define QUALITIES_H
+#ifndef QUALITIES_HPP
+#define QUALITIES_HPP
 
 //std::vector<float> qualities[QualityTypes::COUNT]; // This pattern may be useful for a future idea.
 

@@ -1,8 +1,8 @@
-#ifndef PARTICLE_TYPE_H
-#define PARTICLE_TYPE_H
+#ifndef PARTICLE_TYPE_HPP
+#define PARTICLE_TYPE_HPP
 
 #include "raylib.h"
-#include "qualities.h"
+#include "qualities.hpp"
 
 /**
  * Holds a type of particle that can be used to replicated a lot of similar particles.

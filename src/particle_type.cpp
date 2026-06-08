@@ -1,5 +1,5 @@
-#include "particle_type.h"
-#include <raymath.h>
+#include "particle_type.hpp"
+#include "raymath.h"
 
 // Constructor.
 ParticleType::ParticleType(float radius, Qualities qualities, Color color) {

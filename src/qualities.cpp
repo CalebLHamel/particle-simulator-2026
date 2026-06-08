@@ -1,4 +1,4 @@
-#include "qualities.h"
+#include "qualities.hpp"
 #include <cstddef>
 
 /**

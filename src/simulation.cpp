@@ -1,4 +1,4 @@
-#include "simulation.h"
+#include "simulation.hpp"
 #include "raymath.h"
 #include <cstdio>
 #include <algorithm>

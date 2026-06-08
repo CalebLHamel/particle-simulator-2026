@@ -1,12 +1,12 @@
 #include <iostream>
 #include "raylib.h"
-#include "particle.h"
+#include "particle.hpp"
 #include "raymath.h"
-#include "particle_type.h"
-#include "particle.h"
+#include "particle_type.hpp"
+#include "particle.hpp"
 #include <vector>
 #include <cmath>
-#include "simulation.h"
+#include "simulation.hpp"
 
 // TODO: Modularize the simulation. I'll likely do so as I optimize it along the way and continue cleaning up.
 
@@ -48,9 +48,9 @@ int main()
     ParticleType types[3] = {test_particle_type0, test_particle_type1, test_particle_type2};
     
     // The simulation itself.
-    size_t chunks_wide = 32;
-    size_t chunks_tall = 20;
-    Simulation simulation = Simulation(chunks_wide, chunks_tall, 50, 1000, 5);
+    size_t chunks_wide = 64;
+    size_t chunks_tall = 40;
+    Simulation simulation = Simulation(chunks_wide, chunks_tall, 25, 1000, 5);
     
     // Main loop
     //--------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ int main()
     int type_selection = 0;
     Vector2 launch_velocity = Vector2{0,0};
 
-    while (!WindowShouldClose())    // Detect window close button or ESC key
+    while (!WindowShouldClose())    // Detect window close button or ESC keyc
     {
         // Arrow keys affect initial velocity of new particles.
         if (IsKeyPressed(KEY_LEFT))    launch_velocity.x -= 1.0f;

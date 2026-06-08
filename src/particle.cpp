@@ -1,4 +1,4 @@
-#include "particle.h"
+#include "particle.hpp"
 
 Particle::Particle(float radius, Vector2 position, Vector2 velocity, Qualities qualities, Color color) : ParticleType(radius, qualities, color) {
     this->position = position;
