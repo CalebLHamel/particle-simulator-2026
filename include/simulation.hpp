@@ -15,6 +15,9 @@ private:
     // Where in the active list, if it is in an active list, it can be found.
     size_t active_index;
 
+    std::vector<Chunk*> nearby_chunks;
+    std::vector<Chunk*> distant_chunks;
+
     // Tracks where the chunk is in the simulation.
     size_t x;
     size_t y;
@@ -28,6 +31,7 @@ public:
 
     // Tells the chunk to determine its overall qualities from its contents.
     void updateQualities();
+    Qualities getQualities();
     
     // Gets the list of all particles in the chunk.
     std::vector<Particle>* getParticles();
@@ -38,6 +42,9 @@ public:
 
     // Pops a particle out of the chunk.
     Particle popParticle(size_t index);
+
+    std::vector<Chunk*>* getNearbyChunks();
+    std::vector<Chunk*>* getDistantChunks();
 };
 
 class Simulation {
@@ -94,6 +101,9 @@ class Simulation {
 
         // Removes the given chunk from the active list if it isn't already gone.
         bool ensureChunkIsInactive(Chunk* chunk);
+
+        // Updates each chunk's tracking of qualities.
+        void updateChunkQualities();
 };
 
 #endif

@@ -1,10 +1,19 @@
 #include "particle.hpp"
+#include <algorithm>
 
 Particle::Particle(float radius, Vector2 position, Vector2 velocity, Qualities qualities, Color color) : ParticleType(radius, qualities, color) {
     this->position = position;
     this->prior_position = position;
     this->velocity = velocity;
-    this->color = color;
+
+    unsigned char r = color.r;
+    unsigned char g = color.g;
+    unsigned char b = color.b;
+    r = std::min(255, std::max(0, r + GetRandomValue(-20,20)));
+    b = std::min(255, std::max(0, b + GetRandomValue(-20,20)));
+    g = std::min(255, std::max(0, g + GetRandomValue(-20,20)));
+    this->color = Color{r,g,b, color.a};
+
     this->qualities = qualities;
 };
 
@@ -96,5 +105,13 @@ Color Particle::getColor() {
  * Sets the particle's color.
  */
 void Particle::setColor(Color color) {
-    this->color = color;
+    unsigned char r = color.r;
+    unsigned char g = color.g;
+    unsigned char b = color.b;
+
+    r = std::min(255, std::max(0, r + GetRandomValue(-10,10)));
+    b = std::min(255, std::max(0, b + GetRandomValue(-10,10)));
+    g = std::min(255, std::max(0, g + GetRandomValue(-10,10)));
+
+    this->color = Color{r,g,b, color.a};
 }

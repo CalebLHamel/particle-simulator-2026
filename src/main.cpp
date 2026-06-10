@@ -33,26 +33,32 @@ int main()
     // Defining a few different particle types to use.
     
     Qualities test_qualities0 = Qualities();
-    test_qualities0.setQuality(QualityTypes::Mass, 1.0);
+    test_qualities0.setQuality(QualityTypes::Mass, 3.0);
     test_qualities0.setQuality(QualityTypes::Charge, -4.0);
     ParticleType test_particle_type0 = ParticleType(4.0, test_qualities0, Color{20, 20, 240, 255});
     
     Qualities test_qualities1 = Qualities();
-    test_qualities1.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities1.setQuality(QualityTypes::Mass, 30.0);
     test_qualities1.setQuality(QualityTypes::Charge, 120.0);
     ParticleType test_particle_type1 = ParticleType(10.0, test_qualities1, Color{240, 50, 20, 255});
     
     Qualities test_qualities2 = Qualities();
-    test_qualities2.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities2.setQuality(QualityTypes::Mass, 30.0);
     test_qualities2.setQuality(QualityTypes::Charge, 0.0);
     ParticleType test_particle_type2 = ParticleType(10.0, test_qualities2, Color{240, 240, 20, 255});
-    ParticleType types[3] = {test_particle_type0, test_particle_type1, test_particle_type2};
+
+    Qualities test_qualities3 = Qualities();
+    test_qualities3.setQuality(QualityTypes::Mass, 30.0);
+    test_qualities3.setQuality(QualityTypes::Charge, -120.0);
+    ParticleType test_particle_type3 = ParticleType(10.0, test_qualities3, Color{40, 40, 60, 255});
+
+    ParticleType types[4] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3};
     
     // The simulation itself.
-    size_t chunks_wide = 256;
-    size_t chunks_tall = 160;
-    float chunk_size = 50;
-    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1000, 20);
+    size_t chunks_wide = 30;
+    size_t chunks_tall = 30;
+    float chunk_size = 500;
+    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 20);
     
     // Main loop
     //--------------------------------------------------------------------------------------
@@ -114,6 +120,17 @@ int main()
             } 
         }
 
+        // Used during some demonstrations. Just fills the simulation space with a random assortment of particles.
+        if (IsKeyPressed(KEY_P)) {
+            for (int i=0; i<500; i+=1) {
+                float x = GetRandomValue(0, chunks_wide*chunk_size);
+                float y = GetRandomValue(0, chunks_tall*chunk_size);
+                Vector2 pos = {x,y};
+                Particle new_particle = Particle::makeParticleFromType(types[GetRandomValue(1,3)], pos, launch_velocity);
+                simulation.addParticle(new_particle);
+            }
+        }
+
         // Z zooms in, X zooms out.
         if (IsKeyDown(KEY_Z)) camera_scale = std::max(0.1f,camera_scale - 0.1f);
         if (IsKeyDown(KEY_X)) camera_scale = camera_scale + 0.1f;
@@ -125,6 +142,8 @@ int main()
             type_selection = 1;
         } else if (IsKeyPressed(KEY_THREE)) {
             type_selection = 2;
+        } else if (IsKeyPressed(KEY_FOUR)) {
+            type_selection = 3;
         }
 
         // Draw
@@ -194,6 +213,7 @@ int main()
 
         simulation.moveParticles();
         simulation.manageCollisions();
+        simulation.determineForces();
     }
 
     // De-Initialization

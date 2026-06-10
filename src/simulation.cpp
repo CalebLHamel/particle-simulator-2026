@@ -11,6 +11,9 @@ Chunk::Chunk(size_t x, size_t y) {
     Qualities collective_qualities = Qualities();
     this->x = x;
     this->y = y;
+
+    this->nearby_chunks = std::vector<Chunk*>();
+    this->distant_chunks = std::vector<Chunk*>();
 }
 
 /**
@@ -24,6 +27,13 @@ void Chunk::updateQualities() {
     for (size_t i=0; i<particles.size(); i+=1) {
         collective_qualities.addQualities(particles[i].getQualities());
     }
+}
+
+/**
+ * Gets the collective qualities of a chunk.
+ */
+Qualities Chunk::getQualities() {
+    return this->collective_qualities;
 }
 
 /**
@@ -80,6 +90,19 @@ size_t Chunk::getY() {
     return y;
 }
 
+/**
+ * Gets access to the nearby chunks for the chunk.
+ */
+std::vector<Chunk*>* Chunk::getNearbyChunks() {
+    return &(this->nearby_chunks);
+}
+
+/**
+ * Gets access to the distant chunks for the chunk.
+ */
+std::vector<Chunk*>* Chunk::getDistantChunks() {
+    return &(this->distant_chunks);
+}
 
 /**
  * Constructor for the simulation.
@@ -115,6 +138,37 @@ Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size,
     this->max_collision_iterations = max_collision_iterations;
     this->chunks_wide = chunks_wide;
     this->chunks_tall = chunks_tall;
+
+    float local_radius_squared = local_radius*local_radius;
+    // For each chunk.
+    for (size_t x = 0; x < chunks_wide; x+=1) {
+        for (size_t y = 0; y < chunks_tall; y+=1) {
+            Chunk* chunk = &chunks[x][y];
+
+            // Get the nearby and distant chunk lists.
+            std::vector<Chunk*>* nearby = chunk->getNearbyChunks();
+            std::vector<Chunk*>* distant = chunk->getDistantChunks();
+
+            // For every other chunk.
+            for (size_t x2 = 0; x2 < chunks_wide; x2+=1) {
+                for (size_t y2 = 0; y2 < chunks_tall; y2 += 1) {
+                    if (x2 == x && y2 == y) {
+                        continue;
+                    }
+
+                    // Determine how far it is.
+                    float distance_squared = ((x2-x)*(x2-x) + (y2-y)*(y2-y)) * chunk_size*chunk_size;
+                    
+                    // If within the local radius, put it in the nearby list, else in the distant list.
+                    if (distance_squared < local_radius_squared) {
+                        nearby->push_back(&chunks[x2][y2]);
+                    } else {
+                        distant->push_back(&chunks[x2][y2]);
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -265,7 +319,99 @@ bool Simulation::ensureChunkIsInactive(Chunk* chunk) {
  * Updates their velocities based on these accelerations.
  */
 void Simulation::determineForces() {
-    // TODO
+    // TODO. Complete this.
+
+    // Only doing gravity for now until I refine the logic more.
+    updateChunkQualities();
+
+    // For each chunk with particles in it.
+    for (size_t c = 0; c < active_chunks.size(); c += 1) {
+        Chunk* chunk = active_chunks[c];
+
+        // Get the chunk's coordinates.
+        size_t x = chunk->getX();
+        size_t y = chunk->getY();
+
+        // Get the nearby and distant chunk lists for the chunk.
+        std::vector<Chunk*>* nearby = chunk->getNearbyChunks();
+        std::vector<Chunk*>* distant = chunk->getDistantChunks();
+    
+        // Tracks the influence of external forces, missing the effects of the particles they apply to.
+        Vector2 partial_force_vector_sum = {0,0};
+
+        // For every distant chunk.
+        for (size_t d=0; d<distant->size(); d+=1) {
+            Chunk* distant_chunk = (*distant)[d];
+
+            // Get the distant chunk's qualities and position.
+            Qualities qualities = distant_chunk->getQualities();
+            size_t x2 = distant_chunk->getX();
+            size_t y2 = distant_chunk->getY();
+
+            // Compute the force effects from the chunk.
+            Vector2 position_difference = Vector2Subtract(Vector2{(float)x2,(float)y2}, Vector2{(float)x,(float)y});
+            position_difference = Vector2Scale(position_difference, chunk_size);
+            float distance_squared = Vector2LengthSqr(position_difference);
+            Vector2 direction = Vector2Normalize(position_difference);
+            partial_force_vector_sum = Vector2Add(partial_force_vector_sum, Vector2Scale(direction, -qualities.getQuality(Charge)/distance_squared));
+        }
+
+        // For every particle in this chunk.
+        for (size_t p=0; p<chunk->getParticles()->size(); p+=1) {
+            Particle* particle = &(*chunk->getParticles())[p];
+
+            // Get the particle's position and qualities.
+            Vector2 particle_position = particle->getPosition();
+            Qualities qualities = particle->getQualities();
+
+            // The net force on the particle starts with the partial force vector sum from the chunks found earlier, scaled by the appropriate quality.
+            Vector2 net_force = Vector2Scale(partial_force_vector_sum, qualities.getQuality(Charge));
+
+            // For every other nearby chunk.
+            for (size_t n=0; n<nearby->size(); n+=1) {
+                Chunk* nearby_chunk = (*nearby)[n];
+                // For every particle it contains.
+                std::vector<Particle>* nearby_particles = nearby_chunk->getParticles();
+                for (size_t np=0; np<nearby_particles->size(); np += 1) {
+                    Particle* nearby_particle = &(*nearby_particles)[np];
+                    Vector2 nearby_particle_position = nearby_particle->getPosition();
+                    Qualities nearby_qualities = nearby_particle->getQualities();
+
+                    // Calculate its effect on the force and add it to the net force.
+                    Vector2 position_difference = Vector2Subtract(nearby_particle_position, particle_position);
+                    float distance_squared = Vector2LengthSqr(position_difference);
+                    if (distance_squared < (particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
+                        continue;
+                    }
+                    Vector2 direction = Vector2Normalize(position_difference);
+                    net_force = Vector2Add(net_force, Vector2Scale(direction, -qualities.getQuality(Charge)*nearby_qualities.getQuality(Charge)/distance_squared));
+                }
+            }
+            // For every other particle in this chunk.
+            // For every other nearby chunk.
+            for (size_t n=0; n<chunk->getParticles()->size(); n+=1) {
+                // Skip over self.
+                if (n == p) {
+                    continue;
+                }
+                Particle* nearby_particle = &(*chunk->getParticles())[n];
+                Vector2 nearby_particle_position = nearby_particle->getPosition();
+                Qualities nearby_qualities = nearby_particle->getQualities();
+
+                Vector2 position_difference = Vector2Subtract(nearby_particle_position, particle_position);
+                float distance_squared = Vector2LengthSqr(position_difference);
+                if (distance_squared < (particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
+                    continue;
+                }
+
+                Vector2 direction = Vector2Normalize(position_difference);
+                net_force = Vector2Add(net_force, Vector2Scale(direction, -qualities.getQuality(Charge)*nearby_qualities.getQuality(Charge)/distance_squared));
+            }
+
+            Vector2 acceleration = Vector2Scale(net_force, 1/qualities.getQuality(Mass));
+            particle->setVelocity(Vector2Add(particle->getVelocity(), acceleration));
+        }
+    }
 }
 
 /**
@@ -425,3 +571,12 @@ void Simulation::manageCollisions() {
         }
     }
 }
+
+void Simulation::updateChunkQualities() {
+    for (size_t x=0; x<chunks_wide; x+=1) {
+        for (size_t y=0; y<chunks_wide; y+=1) {
+            chunks[x][y].updateQualities();
+        }
+    }
+}
+
