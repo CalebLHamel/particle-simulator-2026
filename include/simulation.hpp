@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "particle.hpp"
+#include <thread>
 
 class Chunk {
 private:
@@ -73,6 +74,10 @@ class Simulation {
 
         // Places a particle within the simulation. Used for some internal logic.
         void placeParticle(Particle particle);
+
+        void threadDetermineForces(size_t start_inclusive, size_t end_exclusive);
+
+        int threads_available;
 
     public:
         // Constructor.

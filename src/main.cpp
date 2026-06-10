@@ -55,10 +55,10 @@ int main()
     ParticleType types[4] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3};
     
     // The simulation itself.
-    size_t chunks_wide = 30;
-    size_t chunks_tall = 30;
-    float chunk_size = 500;
-    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 20);
+    size_t chunks_wide = 40;
+    size_t chunks_tall = 40;
+    float chunk_size = 600;
+    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10);
     
     // Main loop
     //--------------------------------------------------------------------------------------
@@ -81,6 +81,10 @@ int main()
     std::vector<Vector2> positions = std::vector<Vector2>(100000);
     std::vector<float> radii = std::vector<float>(100000);
     std::vector<Color> colors = std::vector<Color>(100000);
+
+    double force_time = 0;
+    double collision_time = 0;
+    double move_time = 0;
     
     while (!WindowShouldClose())    // Detect window close button or ESC keyc
     {
@@ -126,7 +130,7 @@ int main()
                 float x = GetRandomValue(0, chunks_wide*chunk_size);
                 float y = GetRandomValue(0, chunks_tall*chunk_size);
                 Vector2 pos = {x,y};
-                Particle new_particle = Particle::makeParticleFromType(types[GetRandomValue(1,3)], pos, launch_velocity);
+                Particle new_particle = Particle::makeParticleFromType(types[GetRandomValue(1,3)], pos, {GetRandomValue(-1,1),GetRandomValue(-1,1)});
                 simulation.addParticle(new_particle);
             }
         }
@@ -196,7 +200,7 @@ int main()
             }
 
             // Background for some display information.
-            DrawRectangle(5,5,375, 125, Color{30,30,30,200});
+            DrawRectangle(5,5,375, 215, Color{30,30,30,200});
             
             DrawFPS(10,10);
             
@@ -209,11 +213,26 @@ int main()
             const char *text3 = TextFormat("Launch Velocity: (%d, %d)", (int)launch_velocity.x, (int)launch_velocity.y);
             DrawText(text3, 10, 100, 20, WHITE);
 
+            const char *text4 = TextFormat("MT: %dms\nFT: %dms\nCT: %dms\n", (int)move_time, (int)force_time, (int)collision_time);
+            DrawText(text4, 10,130,20,WHITE);
+
         EndDrawing();
 
+        double time = 0;
+        time = (GetTime()*1000);
         simulation.moveParticles();
+        time = (GetTime()*1000) - time;
+        move_time = (59*move_time + time) / 60;
+
+        time = (GetTime()*1000);
         simulation.manageCollisions();
+        time = (GetTime()*1000) - time;
+        collision_time = (59*collision_time + time) / 60;
+
+        time = (GetTime()*1000);
         simulation.determineForces();
+        time = (GetTime()*1000) - time;
+        force_time = (59*force_time + time) / 60;
     }
 
     // De-Initialization

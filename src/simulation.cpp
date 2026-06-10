@@ -2,6 +2,7 @@
 #include "raymath.h"
 #include <cstdio>
 #include <algorithm>
+#include <thread>
 
 /**
  * Constructor method. Creates an empty chunk.
@@ -169,6 +170,11 @@ Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size,
             }
         }
     }
+
+    
+    unsigned int cores = std::thread::hardware_concurrency();
+    threads_available = 10;
+    printf("\nAvailable hardware threads: %d\n\n", cores);
 }
 
 /**
@@ -314,18 +320,29 @@ bool Simulation::ensureChunkIsInactive(Chunk* chunk) {
     return true;
 }
 
+void Simulation::determineForces() {
+    updateChunkQualities();
+
+    std::vector<std::thread> threads = std::vector<std::thread>();
+    size_t chunks_available = active_chunks.size();
+    size_t per_thread = (size_t) ceil(((double)chunks_available) / (double)threads_available);
+    for (size_t i=0; i<threads_available; i+=1) {
+        threads.push_back(std::thread(&Simulation::threadDetermineForces, *this, i*per_thread, std::min((i+1)*per_thread,chunks_available)));
+    }
+    for (size_t i=0; i<threads.size(); i+=1) {
+        if (threads[i].joinable()) {
+            threads[i].join();
+        }
+    }
+}
+
 /**
  * Calculate all the forces on particles, and how they accelerate.
  * Updates their velocities based on these accelerations.
  */
-void Simulation::determineForces() {
-    // TODO. Complete this.
-
-    // Only doing gravity for now until I refine the logic more.
-    updateChunkQualities();
-
+void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclusive) {
     // For each chunk with particles in it.
-    for (size_t c = 0; c < active_chunks.size(); c += 1) {
+    for (size_t c = start_inclusive; c < end_exclusive; c += 1) {
         Chunk* chunk = active_chunks[c];
 
         // Get the chunk's coordinates.
@@ -384,6 +401,7 @@ void Simulation::determineForces() {
                         continue;
                     }
                     Vector2 direction = Vector2Normalize(position_difference);
+        
                     net_force = Vector2Add(net_force, Vector2Scale(direction, -qualities.getQuality(Charge)*nearby_qualities.getQuality(Charge)/distance_squared));
                 }
             }
@@ -405,6 +423,7 @@ void Simulation::determineForces() {
                 }
 
                 Vector2 direction = Vector2Normalize(position_difference);
+                
                 net_force = Vector2Add(net_force, Vector2Scale(direction, -qualities.getQuality(Charge)*nearby_qualities.getQuality(Charge)/distance_squared));
             }
 
