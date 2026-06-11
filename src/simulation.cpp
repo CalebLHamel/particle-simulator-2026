@@ -15,18 +15,42 @@ Chunk::Chunk(size_t x, size_t y) {
 
     this->nearby_chunks = std::vector<Chunk*>();
     this->distant_chunks = std::vector<Chunk*>();
+    
+    this->chunk_divisions = 5;
+    this->subchunks = std::vector<std::vector<std::vector<Particle*>>>();
+    for (size_t x=0; x<chunk_divisions; x+=1) {
+        std::vector<std::vector<Particle*>> column = std::vector<std::vector<Particle*>>(); 
+        for (size_t y=0; y<chunk_divisions; y+=1) {
+            column.push_back(std::vector<Particle*>());
+        }
+        subchunks.push_back(column);
+    }
 }
 
 /**
  * Updates the chunk's overall qualities based on the particles it contains.
  */
-void Chunk::updateQualities() {
+void Chunk::updateQualities(float chunksize) {
     // Clear present qualities.
     collective_qualities = Qualities();
 
     // Add the qualities of all the particles into the chunk's collective qualities.
     for (size_t i=0; i<particles.size(); i+=1) {
         collective_qualities.addQualities(particles[i].getQualities());
+    }
+
+    // Update subchunks.
+    for (size_t x=0; x<chunk_divisions; x+=1) {
+        for (size_t y=0; y<chunk_divisions; y+=1) {
+            subchunks[x][y] = std::vector<Particle*>();
+        }
+    }
+    for (size_t p=0; p<particles.size(); p+=1) {
+        Particle* particle = &particles[p];
+        size_t sub_x = std::max((size_t)0, std::min((chunk_divisions-1), (size_t)floor(((size_t)(particle->getPosition().x * chunk_divisions / chunksize)) % chunk_divisions)));
+        size_t sub_y = std::max((size_t)0, std::min((chunk_divisions-1), (size_t)floor(((size_t)(particle->getPosition().y * chunk_divisions / chunksize)) % chunk_divisions)));
+        
+        subchunks[sub_x][sub_y].push_back(particle);
     }
 }
 
@@ -105,6 +129,10 @@ std::vector<Chunk*>* Chunk::getDistantChunks() {
     return &(this->distant_chunks);
 }
 
+std::vector<Particle*>* Chunk::getParticlesInSubchunk(size_t x, size_t y) {
+    return &subchunks[x][y];
+}
+
 /**
  * Constructor for the simulation.
  * chunks_wide, chunks_tall : Specify how many chunks wide and tall the simulation is.
@@ -115,7 +143,7 @@ std::vector<Chunk*>* Chunk::getDistantChunks() {
 Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations) {
     // No chunks are active to begin with.
     active_chunks = std::vector<Chunk*>();
-    
+    chunk_divisions = 5;
     // Make new 2D vector to hold the chunks.
     chunks = std::vector<std::vector<Chunk>>();
 
@@ -173,7 +201,7 @@ Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size,
 
     
     unsigned int cores = std::thread::hardware_concurrency();
-    threads_available = 10;
+    threads_available = 6;
     printf("\nAvailable hardware threads: %d\n\n", cores);
 }
 
@@ -279,6 +307,8 @@ void Simulation::moveParticles() {
             c += 1;
         }
     }
+
+    updateChunkQualities();
 }
 
 /**
@@ -321,7 +351,7 @@ bool Simulation::ensureChunkIsInactive(Chunk* chunk) {
 }
 
 void Simulation::determineForces() {
-    updateChunkQualities();
+    //updateChunkQualities();
 
     std::vector<std::thread> threads = std::vector<std::thread>();
     size_t chunks_available = active_chunks.size();
@@ -487,21 +517,24 @@ void Simulation::manageCollisions() {
                 }
 
                 // Make sure that the chunk coordinates stay within limits. At times, some faster particles could squeak out enough to cause issues.
-                size_t chunk_coord_x = std::max(0, std::min((int)floor(x / chunk_size), (int)chunks_wide-1));
-                size_t chunk_coord_y = std::max(0, std::min((int)floor(y / chunk_size), (int)chunks_tall-1));
+                //size_t chunk_coord_x = std::max(0, std::min((int)floor(x / (chunk_size*chunk_divisions)), (int)(chunks_wide*chunk_divisions)-1));
+                //size_t chunk_coord_y = std::max(0, std::min((int)floor(y / (chunk_size*chunk_divisions)), (int)(chunks_tall*chunk_divisions)-1));
+                size_t chunk_coord_x = std::max((size_t)0, std::min(chunks_wide*chunk_divisions-1, (size_t)floor(((size_t)(x * chunk_divisions / chunk_size)))));
+                size_t chunk_coord_y = std::max((size_t)0, std::min(chunks_tall*chunk_divisions-1, (size_t)floor(((size_t)(y * chunk_divisions / chunk_size)))));
+
 
                 // The "other chunk" refers to the chunk that the other particles we check against are in. It will most-likely be the same chunk for some of them.
                 size_t other_chunk_coord_y = chunk_coord_y;
                 // If the particle is above the midpoint, the other chunk coords will tend upwards, and vice versa.
-                if (y > chunk->getY()+(chunk_size/2)) {
-                    other_chunk_coord_y = (chunk_coord_y + 1 == chunks_tall) ? chunk_coord_y : chunk_coord_y + 1;
+                if (y > chunk_coord_y*chunk_size/chunk_divisions + (chunk_size/(chunk_divisions*2.0))) {
+                    other_chunk_coord_y = (chunk_coord_y + 1 == chunks_tall*chunk_divisions) ? chunk_coord_y : chunk_coord_y + 1;
                 } else {
                     other_chunk_coord_y = (chunk_coord_y == 0) ? chunk_coord_y : chunk_coord_y - 1;
                 }
                 size_t other_chunk_coord_x = chunk_coord_x;
                 // If the particle is to the right of the midpoint, the chunk coords will tend right, and vice versa.
-                if (x > chunk->getX()+(chunk_size/2)) {
-                    other_chunk_coord_x = (chunk_coord_x + 1 == chunks_wide) ? chunk_coord_x : chunk_coord_x + 1;
+                if (x > chunk_coord_x*chunk_size/chunk_divisions+(chunk_size/(chunk_divisions*2.0))) {
+                    other_chunk_coord_x = (chunk_coord_x + 1 == chunks_wide*chunk_divisions) ? chunk_coord_x : chunk_coord_x + 1;
                 } else {
                     other_chunk_coord_x = (chunk_coord_x == 0) ? chunk_coord_x : chunk_coord_x - 1;
                 }
@@ -517,18 +550,21 @@ void Simulation::manageCollisions() {
                         continue;
                     }
 
+                    
                     // Get the other chunk.
-                    Chunk* other_chunk = &chunks[other_chunk_coord_x][other_chunk_coord_y];
-
+                    Chunk* other_chunk = &chunks[other_chunk_coord_x/chunk_divisions][other_chunk_coord_y/chunk_divisions];
+                    std::vector<Particle*>* other_particles = other_chunk->getParticlesInSubchunk(other_chunk_coord_x%chunk_divisions, other_chunk_coord_y%chunk_divisions);
                     // For every other particle in the chunk.
-                    // We skip over particles in the current chunk that would have been covered already.
-                    for (size_t op=( (i==0) ? p+1 : 0 ); op < other_chunk->getParticles()->size(); op+=1 ) {
+                    
+                    for (size_t op=0; op < other_particles->size(); op+=1 ) {
                         // Get the other particle that we're checking against.
-                        std::vector<Particle>* other_particles = other_chunk->getParticles(); 
-                        Particle* other_particle = &((*other_particles)[op]);
+                        Particle* other_particle = (*other_particles)[op];
 
                         // Get the difference in their positions.
                         Vector2 position_difference = Vector2Subtract(particle->getPosition(), other_particle->getPosition());
+                        if (position_difference.x == 0 && position_difference.y == 0) {
+                            continue;
+                        }
 
                         // If they are too far away to be colliding, skip it, and check the next particle.
                         if (Vector2Length(position_difference) >= particle->getRadius() + other_particle->getRadius()) {
@@ -565,6 +601,7 @@ void Simulation::manageCollisions() {
                         Vector2 change_in_velocity = Vector2Subtract(Vector2Scale(impact_velocity, (mass-other_mass)/(mass+other_mass)), impact_velocity);
                         Vector2 change_in_other_velocity = Vector2Scale(impact_velocity, (2*mass)/(mass+other_mass));
                         
+                        Vector2 temp = particle->getVelocity();
                         // The particles' final velocities are their initial velocities, plus their change in velocity.
                         particle->setVelocity(Vector2Add(particle->getVelocity(), change_in_velocity));
                         other_particle->setVelocity(Vector2Add(other_particle->getVelocity(), change_in_other_velocity));                        
@@ -572,6 +609,7 @@ void Simulation::manageCollisions() {
                         // Update where the particles would end up based on the velocity changes from the collision.
                         // This is why the main loop has to interate until no collisions cause a change, because a change
                         // in the positions as the result of collisions may incur more collisions.
+
                         particle->setPosition(particle->getPriorPosition()+particle->getVelocity());
                         other_particle->setPosition(other_particle->getPriorPosition()+other_particle->getVelocity());    
                     }
@@ -594,7 +632,7 @@ void Simulation::manageCollisions() {
 void Simulation::updateChunkQualities() {
     for (size_t x=0; x<chunks_wide; x+=1) {
         for (size_t y=0; y<chunks_wide; y+=1) {
-            chunks[x][y].updateQualities();
+            chunks[x][y].updateQualities(chunk_size);
         }
     }
 }

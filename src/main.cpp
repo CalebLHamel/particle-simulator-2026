@@ -55,8 +55,8 @@ int main()
     ParticleType types[4] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3};
     
     // The simulation itself.
-    size_t chunks_wide = 40;
-    size_t chunks_tall = 40;
+    size_t chunks_wide = 30;
+    size_t chunks_tall = 30;
     float chunk_size = 600;
     Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10);
     

@@ -23,6 +23,9 @@ private:
     size_t x;
     size_t y;
 
+    size_t chunk_divisions;
+    std::vector<std::vector<std::vector<Particle*>>> subchunks;
+
 public:
     // Constructor.
     Chunk(size_t x, size_t y);
@@ -30,8 +33,10 @@ public:
     size_t getX();
     size_t getY();
 
+    std::vector<Particle*>* getParticlesInSubchunk(size_t x, size_t y);
+
     // Tells the chunk to determine its overall qualities from its contents.
-    void updateQualities();
+    void updateQualities(float chunk_size);
     Qualities getQualities();
     
     // Gets the list of all particles in the chunk.
@@ -78,6 +83,8 @@ class Simulation {
         void threadDetermineForces(size_t start_inclusive, size_t end_exclusive);
 
         int threads_available;
+
+        size_t chunk_divisions;
 
     public:
         // Constructor.
