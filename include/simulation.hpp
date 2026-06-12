@@ -5,59 +5,98 @@
 #include "particle.hpp"
 #include <thread>
 
-class Chunk {
-private:
+class IQualitiesHolder {
+    public:
+        virtual ~IQualitiesHolder() {}
+
+        virtual Qualities getQualities();
+        virtual void updateQualities();
+
+        virtual size_t getX();
+        virtual size_t getY();
+        virtual Vector2 getPosition();
+};
+
+
+class Chunk : public IQualitiesHolder {
+    private:
     // A chunk holds particles within itself.
     std::vector<Particle> particles;
-
+    
     // A chunk has collective qualities as a result of the a particles it contains.
     Qualities collective_qualities;
-
+    
     // Where in the active list, if it is in an active list, it can be found.
     size_t active_index;
-
+    
     std::vector<Chunk*> nearby_chunks;
-    std::vector<Chunk*> distant_chunks;
-
+    std::vector<IQualitiesHolder*> distant_chunks;
+    
     // Tracks where the chunk is in the simulation.
     size_t x;
     size_t y;
-
+    
+    float chunk_size;
+    
     size_t chunk_divisions;
     std::vector<std::vector<std::vector<Particle*>>> subchunks;
-
-public:
+    
+    public:
     // Constructor.
-    Chunk(size_t x, size_t y);
-
+    Chunk(size_t x, size_t y, float chunk_size);
+    
     size_t getX();
     size_t getY();
-
+    
     std::vector<Particle*>* getParticlesInSubchunk(size_t x, size_t y);
-
+    
     // Tells the chunk to determine its overall qualities from its contents.
-    void updateQualities(float chunk_size);
+    void updateQualities();
     Qualities getQualities();
     
     // Gets the list of all particles in the chunk.
     std::vector<Particle>* getParticles();
-
+    
     // Getter and setter for the active index.
     size_t getActiveIndex();
     void setActiveIndex(size_t index);
-
+    
     // Pops a particle out of the chunk.
     Particle popParticle(size_t index);
-
+    
     std::vector<Chunk*>* getNearbyChunks();
-    std::vector<Chunk*>* getDistantChunks();
+    std::vector<IQualitiesHolder*>* getDistantChunks();
+    
+    Vector2 getPosition();
+};
+
+class SuperChunk : public IQualitiesHolder {
+    private:
+        std::vector<Chunk*> sub_chunks;
+        Qualities qualities;
+        size_t x;
+        size_t y;
+        float chunk_size;
+        Vector2 position;
+    public:
+        SuperChunk(size_t x, size_t y, float chunk_size);
+        Qualities getQualities();
+        void updateQualities();
+        size_t getX();
+        size_t getY();
+        Vector2 getPosition();
+        void updatePosition();
+
+        std::vector<Chunk*>* getSubChunks();
 };
 
 class Simulation {
     private:
-        // The spatial arrangement of chunks.
-        std::vector<std::vector<Chunk>> chunks;
-
+    // The spatial arrangement of chunks.
+    std::vector<std::vector<Chunk>> chunks;
+    
+    std::vector<std::vector<SuperChunk>> super_chunks;
+    
         // For when the order of iteration doesn't matter, which is often, this only tracks chunks with particles in them.
         std::vector<Chunk*> active_chunks;
 

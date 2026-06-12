@@ -58,7 +58,7 @@ int main()
     size_t chunks_wide = 30;
     size_t chunks_tall = 30;
     float chunk_size = 600;
-    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10);
+    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1100, 10);
     
     // Main loop
     //--------------------------------------------------------------------------------------
