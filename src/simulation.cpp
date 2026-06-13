@@ -4,7 +4,13 @@
 #include <algorithm>
 #include <thread>
 
+// TODO: Make functions for coordinate conversion.
 
+/**
+ * Superchunk constructor.
+ * x, y         : Where in the simulation's superchunk grid this superchunk is.
+ * chunk_size   : The spacial length/width of the superchunk.
+ */
 SuperChunk::SuperChunk(size_t x, size_t y, float chunk_size) {
     this->x = x;
     this->y = y;
@@ -14,10 +20,17 @@ SuperChunk::SuperChunk(size_t x, size_t y, float chunk_size) {
     this->position = {x*chunk_size,y*chunk_size};
 }
 
+/**
+ * Gets the qualities of the superchunk.
+ */
 Qualities SuperChunk::getQualities() {
     return qualities;
 }
 
+/**
+ * Updates the qualities of the superchunk.
+ * Meant for usage after the superchunk's chunks update their own qualities.
+ */
 void SuperChunk::updateQualities() {
     this->qualities = Qualities();
     for (size_t i=0; i<sub_chunks.size(); i+= 1) {
@@ -25,26 +38,45 @@ void SuperChunk::updateQualities() {
     }
 }
 
+/**
+ * Gets the X index of the superchunk in the simulation's superchunk grid.
+ */
+
 size_t SuperChunk::getX() {
     return x;
 }
 
+/**
+ * Gets the Y index of the superchunk in the simulation's superchunk grid.
+ */
 size_t SuperChunk::getY() {
     return y;
 }
 
-Vector2 SuperChunk::getPosition() {
+/**
+ * Gets the superchunk's position in the simulation.
+ * That is, where the qualities of the superchunk are considered to be.
+ */
+Vector2 SuperChunk::getSimulationPosition() {
     return position;
 }
 
+/**
+ * Updates the superchunk's position.
+ * Meant for use after initialization.
+ * The superchunk's position is seen as the average of the chunks it contains.
+ */
 void SuperChunk::updatePosition() {
     Vector2 sum = {0,0};
     for (size_t i=0; i<sub_chunks.size(); i+= 1) {
-        sum = Vector2Add(sum, sub_chunks[i]->getPosition());
+        sum = Vector2Add(sum, sub_chunks[i]->getSimulationPosition());
     }
     this->position = Vector2Scale(sum, 1.0/sub_chunks.size());
 }
 
+/**
+ * Gets the chunks present in this superchunk.
+ */
 std::vector<Chunk*>* SuperChunk::getSubChunks() {
     return &sub_chunks;
 }
@@ -53,7 +85,7 @@ std::vector<Chunk*>* SuperChunk::getSubChunks() {
 /**
  * Constructor method. Creates an empty chunk.
  */
-Chunk::Chunk(size_t x, size_t y, float chunk_size) {
+Chunk::Chunk(size_t x, size_t y, float chunk_size, size_t chunk_divisions) {
     particles = std::vector<Particle>();
     Qualities collective_qualities = Qualities();
     this->x = x;
@@ -63,7 +95,8 @@ Chunk::Chunk(size_t x, size_t y, float chunk_size) {
     this->nearby_chunks = std::vector<Chunk*>();
     this->distant_chunks = std::vector<IQualitiesHolder*>();
     
-    this->chunk_divisions = 10;
+    // Create the subchunks in the chunk (used for collision checking).
+    this->chunk_divisions = chunk_divisions;
     this->subchunks = std::vector<std::vector<std::vector<Particle*>>>();
     for (size_t x=0; x<chunk_divisions; x+=1) {
         std::vector<std::vector<Particle*>> column = std::vector<std::vector<Particle*>>(); 
@@ -74,7 +107,11 @@ Chunk::Chunk(size_t x, size_t y, float chunk_size) {
     }
 }
 
-Vector2 Chunk::getPosition() {
+/**
+ * Gets where the chunk is present within the simulation.
+ * That is, where the qualities are considered to be.
+ */
+Vector2 Chunk::getSimulationPosition() {
     return {x*chunk_size, y*chunk_size};
 }
 
@@ -91,11 +128,13 @@ void Chunk::updateQualities() {
     }
 
     // Update subchunks.
+    // Clear each subchunk.
     for (size_t x=0; x<chunk_divisions; x+=1) {
         for (size_t y=0; y<chunk_divisions; y+=1) {
             subchunks[x][y] = std::vector<Particle*>();
         }
     }
+    // Add particles into the subchunks.
     for (size_t p=0; p<particles.size(); p+=1) {
         Particle* particle = &particles[p];
         size_t sub_x = std::max((size_t)0, std::min((chunk_divisions-1), (size_t)floor(((size_t)(particle->getPosition().x * chunk_divisions / chunk_size)) % chunk_divisions)));
@@ -180,6 +219,10 @@ std::vector<IQualitiesHolder*>* Chunk::getDistantChunks() {
     return &(this->distant_chunks);
 }
 
+/**
+ * Gets the particles within one of the chunk's subchunks.
+ * x, y: The local subchunk index. Range 0 to (chunk_divisions-1) inclusive.
+ */
 std::vector<Particle*>* Chunk::getParticlesInSubchunk(size_t x, size_t y) {
     return &subchunks[x][y];
 }
@@ -191,14 +234,20 @@ std::vector<Particle*>* Chunk::getParticlesInSubchunk(size_t x, size_t y) {
  * local_radius             : Specifies the distance at which the particle forces should still be calculated on a per-particle basis.
  * max_collision_iterations : Specifies the limit of how many iterations the collision solver is allowed to process.
  */
-Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations) {
-    // No chunks are active to begin with.
-    active_chunks = std::vector<Chunk*>();
-    chunk_divisions = 10;
-    // Make new 2D vector to hold the chunks.
+Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions) {
+    // Set fields.
+    this->count = 0;
+    this->chunk_size = chunk_size;
+    this->local_radius = local_radius;
+    this->max_collision_iterations = max_collision_iterations;
+    this->chunks_wide = chunks_wide;
+    this->chunks_tall = chunks_tall;
+    active_chunks = std::vector<Chunk*>(); // No chunks are active to begin with.
+    this->chunk_divisions = chunk_divisions;
     chunks = std::vector<std::vector<Chunk>>();
 
-    // TODO: Replace vectors of vectors with arrays?
+    // Make the superchunks.
+    // For every column that should exist.
     super_chunks = std::vector<std::vector<SuperChunk>>();
     for (size_t x=0; x<((1+chunks_wide)/2); x+=1) {
         // Make the column.
@@ -210,68 +259,60 @@ Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size,
         // Add the column to the chunks.
         super_chunks.push_back(column);
     }
-
+    
+    // Make the chunks.
     // For every column that should exist.
     for (size_t x=0; x<chunks_wide; x+=1) {
         // Make the column.
         std::vector<Chunk> column = std::vector<Chunk>();
         // Populate the column with new, empty chunks. 
         for (size_t y=0; y<chunks_tall; y+=1) {
-            column.push_back(Chunk(x, y, chunk_size));
+            column.push_back(Chunk(x, y, chunk_size, chunk_divisions));
         }
         // Add the column to the chunks.
         chunks.push_back(column);
     }
     
+    // Put the chunks in the superchunks.
     for (size_t x=0; x<chunks_wide; x+=1) {
         for (size_t y=0; y<chunks_tall; y+=1) {
             super_chunks[x/2][y/2].getSubChunks()->push_back(&chunks[x][y]);
         }
     }
-    // 
-
-
-
-    this->count = 0;
-
-    // Set remaining fields.
-    this->chunk_size = chunk_size;
-    this->local_radius = local_radius;
-    this->max_collision_iterations = max_collision_iterations;
-    this->chunks_wide = chunks_wide;
-    this->chunks_tall = chunks_tall;
-
+    
+    // Determine which chunks are local and distant for each chunk.
     float local_radius_squared = local_radius*local_radius;
     float super_radius_squared = 4*local_radius_squared;
     // For each chunk.
     for (size_t x = 0; x < chunks_wide; x+=1) {
         for (size_t y = 0; y < chunks_tall; y+=1) {
             Chunk* chunk = &chunks[x][y];
-
+            
             // Get the nearby and distant chunk lists.
             std::vector<Chunk*>* nearby = chunk->getNearbyChunks();
             std::vector<IQualitiesHolder*>* distant = chunk->getDistantChunks();
-
+            
             // For every superchunk.
-            ///*
             for (size_t sx = 0; sx < (1+chunks_wide)/2; sx += 1) {
                 for (size_t sy = 0; sy < (1+chunks_tall)/2; sy += 1) {
                     float super_distance_squared = ((sx*2-x)*(sx*2-x) + (sy*2-y)*(sy*2-y)) * chunk_size*chunk_size;
                     // If far enough away to be added as a distant chunk, add it.
                     if (super_distance_squared > super_radius_squared) {
                         distant->push_back(&super_chunks[sx][sy]);
-                        // Else, deal with its subchunks.
+                    // Else, deal with its subchunks (regular chunks).
                     } else {
-                        // Deal with each subchunk.
+                        // For each subchunk (regular chunk).
                         for (size_t i = 0; i < super_chunks[sx][sy].getSubChunks()->size(); i+=1) {
                             Chunk* other_chunk = (*super_chunks[sx][sy].getSubChunks())[i];
                             size_t x2 = other_chunk->getX();
                             size_t y2 = other_chunk->getY();
+
+                            // If the chunk is the other chunk don't include it, chekc the next one.
                             if (x2 == x && y2 == y) {
                                 continue;
                             }
                             
-                            // Determine how far it is.
+                            // Determine how far the other chunk is.
                             float distance_squared = ((x2-x)*(x2-x) + (y2-y)*(y2-y)) * chunk_size*chunk_size;
                             
                             // If within the local radius, put it in the nearby list, else in the distant list.
@@ -284,41 +325,12 @@ Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size,
                     }
                 }
             }
-            //*/
-            // For every other chunk.
-            /*
-            for (size_t x2 = 0; x2 < chunks_wide; x2+=1) {
-                for (size_t y2 = 0; y2 < chunks_tall; y2 += 1) {
-                    if (x2 == x && y2 == y) {
-                        continue;
-                    }
-                    
-                    // Determine how far it is.
-                    float distance_squared = ((x2-x)*(x2-x) + (y2-y)*(y2-y)) * chunk_size*chunk_size;
-                    
-                    // If within the local radius, put it in the nearby list, else in the distant list.
-                    if (distance_squared < local_radius_squared) {
-                        nearby->push_back(&chunks[x2][y2]);
-                    } else {
-                        distant->push_back(&chunks[x2][y2]);
-                    }
-                }
-            }
-            //*/
-            
-
-            /*
-            Add to the superdistant chunks... but how?
-            Make a superchunk class or struct or something
-            Try to add superchunks first, every time it fails, add their components as before.
-            */
         }
     }
 
-    
-    unsigned int cores = std::thread::hardware_concurrency();
-    threads_available = 8;
-    printf("\nAvailable hardware threads: %d\n\n", cores);
+    // Set the max threads (used for force checking).
+    unsigned int cores_available = std::thread::hardware_concurrency();
+    this->max_threads = std::min((size_t)cores_available-1, max_threads-1);
 }
 
 /**
@@ -424,6 +436,7 @@ void Simulation::moveParticles() {
         }
     }
 
+    // Having moved all the particles, we now want to update the chunk qualities to reflect this.
     updateChunkQualities();
 }
 
@@ -466,21 +479,32 @@ bool Simulation::ensureChunkIsInactive(Chunk* chunk) {
     return true;
 }
 
+/**
+ * Determines forces on each particle in the simulation and uses them to apply acceleration.
+ */
 void Simulation::determineForces() {
-    //updateChunkQualities();
-
     std::vector<std::thread> threads = std::vector<std::thread>();
     size_t chunks_available = active_chunks.size();
-    size_t per_thread = (size_t) ceil(((double)chunks_available) / (double)threads_available);
-    for (size_t i=0; i<threads_available; i+=1) {
+    size_t per_thread = (size_t) ceil(((double)chunks_available) / (double)(max_threads+1));
+
+    // Make additional threads to divide the work.
+    for (size_t i=1; i<max_threads; i+=1) {
         threads.push_back(std::thread(&Simulation::threadDetermineForces, *this, i*per_thread, std::min((i+1)*per_thread,chunks_available)));
     }
+
+    // With the other threads now going, do some work on this thread.
+    threadDetermineForces(0,per_thread);
+
+    // With the work on this thread done, now just wait for all the other to finish.
     for (size_t i=0; i<threads.size(); i+=1) {
         if (threads[i].joinable()) {
             threads[i].join();
         }
     }
 }
+
+
+// TODO: Generalize forces so I don't always have to update this function to change force behaviours.
 
 /**
  * Calculate all the forces on particles, and how they accelerate.
@@ -510,10 +534,10 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
             Qualities qualities = distant_chunk->getQualities();
 
             // Compute the force effects from the chunk.
-            Vector2 position_difference = Vector2Subtract(distant_chunk->getPosition(), chunk->getPosition());
+            Vector2 position_difference = Vector2Subtract(distant_chunk->getSimulationPosition(), chunk->getSimulationPosition());
             float distance_squared = Vector2LengthSqr(position_difference);
             Vector2 direction = Vector2Normalize(position_difference);
-            partial_force_vector_sum = Vector2Add(partial_force_vector_sum, Vector2Scale(direction, -qualities.getQuality(Charge)/distance_squared));
+            partial_force_vector_sum = Vector2Add(partial_force_vector_sum, Vector2Scale(direction, qualities.getQuality(Mass)/distance_squared));
         }
 
         // For every particle in this chunk.
@@ -525,7 +549,7 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
             Qualities qualities = particle->getQualities();
 
             // The net force on the particle starts with the partial force vector sum from the chunks found earlier, scaled by the appropriate quality.
-            Vector2 net_force = Vector2Scale(partial_force_vector_sum, qualities.getQuality(Charge));
+            Vector2 net_force = Vector2Scale(partial_force_vector_sum, qualities.getQuality(Mass));
 
             // For every other nearby chunk.
             for (size_t n=0; n<nearby->size(); n+=1) {
@@ -545,7 +569,7 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
                     }
                     Vector2 direction = Vector2Normalize(position_difference);
         
-                    net_force = Vector2Add(net_force, Vector2Scale(direction, -qualities.getQuality(Charge)*nearby_qualities.getQuality(Charge)/distance_squared));
+                    net_force = Vector2Add(net_force, Vector2Scale(direction, qualities.getQuality(Mass)*nearby_qualities.getQuality(Mass)/distance_squared));
                 }
             }
             // For every other particle in this chunk.
@@ -558,20 +582,31 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
                 Particle* nearby_particle = &(*chunk->getParticles())[n];
                 Vector2 nearby_particle_position = nearby_particle->getPosition();
                 Qualities nearby_qualities = nearby_particle->getQualities();
-
-                Vector2 position_difference = Vector2Subtract(nearby_particle_position, particle_position);
-                float distance_squared = Vector2LengthSqr(position_difference);
-                if (distance_squared < (particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
-                    continue;
-                }
-
-                Vector2 direction = Vector2Normalize(position_difference);
                 
-                net_force = Vector2Add(net_force, Vector2Scale(direction, -qualities.getQuality(Charge)*nearby_qualities.getQuality(Charge)/distance_squared));
+                Vector2 position_difference = Vector2Subtract(nearby_particle_position, particle_position);
+                Vector2 direction = Vector2Normalize(position_difference);
+
+                float distance_squared = Vector2LengthSqr(position_difference);
+                if (distance_squared > (particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
+                    net_force = Vector2Add(net_force, Vector2Scale(direction, qualities.getQuality(Mass)*nearby_qualities.getQuality(Mass)/distance_squared));
+                } else if (distance_squared < 0.95*(particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
+                    float compression = particle->getQuality(QualityTypes::Compression);
+                    particle->setQuality(QualityTypes::Compression, std::min(compression+0.1,100.0));
+                    float scale = (-qualities.getQuality(Mass))*(nearby_particle->getQuality(QualityTypes::Mass))/(qualities.getQuality(Mass)); //(particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius()) / (distance_squared + 0.05);
+                    net_force = Vector2Add(net_force, Vector2Scale(direction, scale*compression));
+                } else {
+                    float compression = particle->getQuality(QualityTypes::Compression);
+                    particle->setQuality(QualityTypes::Compression, 0);
+                }
             }
 
             Vector2 acceleration = Vector2Scale(net_force, 1/qualities.getQuality(Mass));
             particle->setVelocity(Vector2Add(particle->getVelocity(), acceleration));
+            Vector2 velocity = particle->getVelocity();
+            if (Vector2Length(velocity) > 30) {
+                velocity = Vector2Scale(Vector2Normalize(velocity), 30);
+                particle->setVelocity(velocity);
+            }
         }
     }
 }
@@ -630,11 +665,8 @@ void Simulation::manageCollisions() {
                 }
 
                 // Make sure that the chunk coordinates stay within limits. At times, some faster particles could squeak out enough to cause issues.
-                //size_t chunk_coord_x = std::max(0, std::min((int)floor(x / (chunk_size*chunk_divisions)), (int)(chunks_wide*chunk_divisions)-1));
-                //size_t chunk_coord_y = std::max(0, std::min((int)floor(y / (chunk_size*chunk_divisions)), (int)(chunks_tall*chunk_divisions)-1));
                 size_t chunk_coord_x = std::max((size_t)0, std::min(chunks_wide*chunk_divisions-1, (size_t)floor(((size_t)(x * chunk_divisions / chunk_size)))));
                 size_t chunk_coord_y = std::max((size_t)0, std::min(chunks_tall*chunk_divisions-1, (size_t)floor(((size_t)(y * chunk_divisions / chunk_size)))));
-
 
                 // The "other chunk" refers to the chunk that the other particles we check against are in. It will most-likely be the same chunk for some of them.
                 size_t other_chunk_coord_y = chunk_coord_y;
@@ -663,12 +695,11 @@ void Simulation::manageCollisions() {
                         continue;
                     }
 
-                    
                     // Get the other chunk.
                     Chunk* other_chunk = &chunks[other_chunk_coord_x/chunk_divisions][other_chunk_coord_y/chunk_divisions];
                     std::vector<Particle*>* other_particles = other_chunk->getParticlesInSubchunk(other_chunk_coord_x%chunk_divisions, other_chunk_coord_y%chunk_divisions);
-                    // For every other particle in the chunk.
                     
+                    // For every other particle in the chunk.
                     for (size_t op=0; op < other_particles->size(); op+=1 ) {
                         // Get the other particle that we're checking against.
                         Particle* other_particle = (*other_particles)[op];
@@ -710,11 +741,16 @@ void Simulation::manageCollisions() {
                         float mass = particle->getQuality(Mass);
                         float other_mass = other_particle->getQuality(Mass);
                         
-                        // These derive from simplifying the equations for perfectly elastic collisions.
-                        Vector2 change_in_velocity = Vector2Subtract(Vector2Scale(impact_velocity, (mass-other_mass)/(mass+other_mass)), impact_velocity);
-                        Vector2 change_in_other_velocity = Vector2Scale(impact_velocity, (2*mass)/(mass+other_mass));
+                        // This isn't really how restitution works, even theoretically, as it's an emergent property, but
+                        // this is a simplified model to allow these particles to have non-elastic collisions.
+                        // I opted to simply take the product of their Restitution qualities.
+                        float restitution = particle->getQuality(Restitution)*other_particle->getQuality(Restitution);
+
+                        // These calculations derive from simplifying the equations for particle collisions.
+
+                        Vector2 change_in_velocity = Vector2Subtract(Vector2Scale(impact_velocity, (mass-other_mass*restitution)/(mass+other_mass)), impact_velocity);
+                        Vector2 change_in_other_velocity = Vector2Scale(impact_velocity, (mass + mass*restitution)/(mass+other_mass));
                         
-                        Vector2 temp = particle->getVelocity();
                         // The particles' final velocities are their initial velocities, plus their change in velocity.
                         particle->setVelocity(Vector2Add(particle->getVelocity(), change_in_velocity));
                         other_particle->setVelocity(Vector2Add(other_particle->getVelocity(), change_in_other_velocity));                        
@@ -722,7 +758,6 @@ void Simulation::manageCollisions() {
                         // Update where the particles would end up based on the velocity changes from the collision.
                         // This is why the main loop has to interate until no collisions cause a change, because a change
                         // in the positions as the result of collisions may incur more collisions.
-
                         particle->setPosition(particle->getPriorPosition()+particle->getVelocity());
                         other_particle->setPosition(other_particle->getPriorPosition()+other_particle->getVelocity());    
                     }
@@ -731,7 +766,7 @@ void Simulation::manageCollisions() {
         }
     }
 
-    // Set every particle's prior position to their current position.
+    // Set every particle's prior position to their current position now that collisions are resolved.
     // This prepares them for following computations by remembering where they were.
     for (size_t c=0; c<active_chunks.size(); c+=1) {
         Chunk* chunk = active_chunks[c];
@@ -742,12 +777,17 @@ void Simulation::manageCollisions() {
     }
 }
 
+/**
+ * Updates the qualities of each chunk (and superchunk) in the simulation.
+ */
 void Simulation::updateChunkQualities() {
+    // Update each chunk.
     for (size_t x=0; x<chunks_wide; x+=1) {
         for (size_t y=0; y<chunks_wide; y+=1) {
             chunks[x][y].updateQualities();
         }
     }
+    // Update each superchunk
     for (size_t x=0; x<(chunks_wide-1)/2; x+=1) {
         for (size_t y=0; y<(chunks_wide-1)/2; y+=1) {
             super_chunks[x][y].updateQualities();

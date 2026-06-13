@@ -1,14 +1,15 @@
 #ifndef QUALITIES_HPP
 #define QUALITIES_HPP
 
-//std::vector<float> qualities[QualityTypes::COUNT]; // This pattern may be useful for a future idea.
-
 /**
  * All the different qualities that it is possible for a particle to hold.
+ * This basically means any number we want a particle to possess, for any reason (with the exception of radius, position, and velocity).
  */
 enum QualityTypes {
     Mass,
     Charge,
+    Restitution,
+    Compression,
     COUNT // Not a type, just used to count how many qualities there are. Always keep this enum last, as it's used to count the number of quality types.
 };
 

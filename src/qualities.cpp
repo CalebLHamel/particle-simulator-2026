@@ -4,7 +4,12 @@
 /**
  * Constructor.
  */
-Qualities::Qualities() {};
+Qualities::Qualities() {
+    for (size_t i=0; i<QualityTypes::COUNT; i+=1) {
+        this->qualities[i] = 0;
+    }
+    this->qualities[Restitution] = 1;
+};
 
 /**
  * Takes a DefaultQualities, sets the value of a quality type, and returns it again.

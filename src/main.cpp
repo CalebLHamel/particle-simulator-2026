@@ -24,7 +24,6 @@ int main()
     
     InitWindow(screenWidth, screenHeight, "Learning Things");
     
-    // Set our game to run at 60 frames-per-second
     SetTargetFPS(60);
     
     // Simulation setup
@@ -33,37 +32,41 @@ int main()
     // Defining a few different particle types to use.
     
     Qualities test_qualities0 = Qualities();
-    test_qualities0.setQuality(QualityTypes::Mass, 3.0);
-    test_qualities0.setQuality(QualityTypes::Charge, -4.0);
-    ParticleType test_particle_type0 = ParticleType(4.0, test_qualities0, Color{20, 20, 240, 255});
+    test_qualities0.setQuality(QualityTypes::Mass, 1000.0);
+    test_qualities0.setQuality(QualityTypes::Charge, -0.4);
+    //test_qualities0.setQuality(QualityTypes::Restitution, 0.7);
+    ParticleType test_particle_type0 = ParticleType(30.0, test_qualities0, Color{20, 20, 20, 255});
     
     Qualities test_qualities1 = Qualities();
-    test_qualities1.setQuality(QualityTypes::Mass, 30.0);
-    test_qualities1.setQuality(QualityTypes::Charge, 120.0);
+    test_qualities1.setQuality(QualityTypes::Mass, 3.0);
+    test_qualities1.setQuality(QualityTypes::Charge, 5.0);
+    //test_qualities1.setQuality(QualityTypes::Restitution, 0.95);
     ParticleType test_particle_type1 = ParticleType(10.0, test_qualities1, Color{240, 50, 20, 255});
     
     Qualities test_qualities2 = Qualities();
-    test_qualities2.setQuality(QualityTypes::Mass, 30.0);
+    test_qualities2.setQuality(QualityTypes::Mass, 1.5);
     test_qualities2.setQuality(QualityTypes::Charge, 0.0);
-    ParticleType test_particle_type2 = ParticleType(10.0, test_qualities2, Color{240, 240, 20, 255});
+    //test_qualities2.setQuality(QualityTypes::Restitution, 0.1);
+    ParticleType test_particle_type2 = ParticleType(4.0, test_qualities2, Color{220, 220, 20, 255});
 
     Qualities test_qualities3 = Qualities();
-    test_qualities3.setQuality(QualityTypes::Mass, 30.0);
-    test_qualities3.setQuality(QualityTypes::Charge, -120.0);
-    ParticleType test_particle_type3 = ParticleType(10.0, test_qualities3, Color{40, 40, 60, 255});
+    test_qualities3.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities3.setQuality(QualityTypes::Charge, -4.0);
+    //test_qualities3.setQuality(QualityTypes::Restitution, 0.95);
+    ParticleType test_particle_type3 = ParticleType(20.0, test_qualities3, Color{40, 40, 200, 255});
 
     ParticleType types[4] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3};
     
     // The simulation itself.
     size_t chunks_wide = 30;
     size_t chunks_tall = 30;
-    float chunk_size = 600;
-    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1100, 10);
+    float chunk_size = 300;
+    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1100, 10, 6, 5);
     
     // Main loop
     //--------------------------------------------------------------------------------------
     
-    // Some variable for use in the loop.
+    // Some variables for use in the loop.
     int type_selection = 0;
     Vector2 launch_velocity = Vector2{0,0};
     Vector2 camera_offset = Vector2{screenWidth/2, screenHeight/2};
@@ -82,6 +85,7 @@ int main()
     std::vector<float> radii = std::vector<float>(100000);
     std::vector<Color> colors = std::vector<Color>(100000);
 
+    // Tracks how long some different stages of the simulation take.
     double force_time = 0;
     double collision_time = 0;
     double move_time = 0;
@@ -124,7 +128,7 @@ int main()
             } 
         }
 
-        // Used during some demonstrations. Just fills the simulation space with a random assortment of particles.
+        // Used during some demonstrations. Just fills the simulation space with a random assortment of particles as set up inside the loop.
         if (IsKeyPressed(KEY_P)) {
             for (int i=0; i<500; i+=1) {
                 float x = GetRandomValue(0, chunks_wide*chunk_size);
@@ -202,37 +206,41 @@ int main()
             // Background for some display information.
             DrawRectangle(5,5,375, 215, Color{30,30,30,200});
             
+            // Display time information.
             DrawFPS(10,10);
-            
             const char *text = TextFormat("Number of Particles: %d", simulation.getCount());
             DrawText(text, 10,40, 20, WHITE);
-
             const char *text2 = TextFormat("Camera: (%d, %d). Zoom: %f", (int)camera_position.x, (int)camera_position.y, (float)(1/camera_scale));
             DrawText(text2, 10,70, 20, WHITE);
-
             const char *text3 = TextFormat("Launch Velocity: (%d, %d)", (int)launch_velocity.x, (int)launch_velocity.y);
             DrawText(text3, 10, 100, 20, WHITE);
-
             const char *text4 = TextFormat("MT: %dms\nFT: %dms\nCT: %dms\n", (int)move_time, (int)force_time, (int)collision_time);
             DrawText(text4, 10,130,20,WHITE);
-
+            
         EndDrawing();
+        
+        // Measure how long some stages take.
 
         double time = 0;
+
+        // These use a rudimentary weighted moving average. I didn't feel like setting up storage for many values, so it just weights itself against the prior.
+        // The average is pretty effective over a few seconds and helped me identify where some slowdowns were.
+        
         time = (GetTime()*1000);
         simulation.moveParticles();
         time = (GetTime()*1000) - time;
         move_time = (59*move_time + time) / 60;
-
-        time = (GetTime()*1000);
-        simulation.manageCollisions();
-        time = (GetTime()*1000) - time;
-        collision_time = (59*collision_time + time) / 60;
-
+        
         time = (GetTime()*1000);
         simulation.determineForces();
         time = (GetTime()*1000) - time;
         force_time = (59*force_time + time) / 60;
+        
+        time = (GetTime()*1000);
+        simulation.manageCollisions();
+        time = (GetTime()*1000) - time;
+        collision_time = (59*collision_time + time) / 60;
+        
     }
 
     // De-Initialization
