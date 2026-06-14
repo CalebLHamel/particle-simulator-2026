@@ -234,8 +234,10 @@ std::vector<Particle*>* Chunk::getParticlesInSubchunk(size_t x, size_t y) {
  * local_radius             : Specifies the distance at which the particle forces should still be calculated on a per-particle basis.
  * max_collision_iterations : Specifies the limit of how many iterations the collision solver is allowed to process.
  */
-Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions) {
+Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions, std::vector<ForceFunction> partial_force_effects,std::vector<ForceFunction> final_force_effects) {
     // Set fields.
+    this->partial_force_effects = partial_force_effects;
+    this->final_force_effects = final_force_effects;
     this->count = 0;
     this->chunk_size = chunk_size;
     this->local_radius = local_radius;
@@ -524,32 +526,38 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
         std::vector<IQualitiesHolder*>* distant = chunk->getDistantChunks();
     
         // Tracks the influence of external forces, missing the effects of the particles they apply to.
-        Vector2 partial_force_vector_sum = {0,0};
-
+        std::vector<Vector2> base_force_components = std::vector<Vector2>();
+        for (size_t i=0; i<partial_force_effects.size(); i+=1) {
+            base_force_components.push_back({0,0});
+        }
+        
         // For every distant chunk.
         for (size_t d=0; d<distant->size(); d+=1) {
             IQualitiesHolder* distant_chunk = (*distant)[d];
 
             // Get the distant chunk's qualities and position.
             Qualities qualities = distant_chunk->getQualities();
-
+            
             // Compute the force effects from the chunk.
             Vector2 position_difference = Vector2Subtract(distant_chunk->getSimulationPosition(), chunk->getSimulationPosition());
-            float distance_squared = Vector2LengthSqr(position_difference);
-            Vector2 direction = Vector2Normalize(position_difference);
-            partial_force_vector_sum = Vector2Add(partial_force_vector_sum, Vector2Scale(direction, qualities.getQuality(Mass)/distance_squared));
+            for (size_t i=0; i<partial_force_effects.size(); i+=1) {
+                base_force_components[i] = Vector2Add(base_force_components[i], (partial_force_effects[i])(qualities, position_difference));
+            }
         }
 
         // For every particle in this chunk.
-        for (size_t p=0; p<chunk->getParticles()->size(); p+=1) {
+        for (size_t p=0; p< chunk->getParticles()->size(); p+=1) {
             Particle* particle = &(*chunk->getParticles())[p];
 
             // Get the particle's position and qualities.
             Vector2 particle_position = particle->getPosition();
             Qualities qualities = particle->getQualities();
 
-            // The net force on the particle starts with the partial force vector sum from the chunks found earlier, scaled by the appropriate quality.
-            Vector2 net_force = Vector2Scale(partial_force_vector_sum, qualities.getQuality(Mass));
+
+            std::vector<Vector2> force_components = std::vector<Vector2>();
+            for (size_t i=0; i<partial_force_effects.size(); i+=1) {
+                force_components.push_back({0,0});
+            }
 
             // For every other nearby chunk.
             for (size_t n=0; n<nearby->size(); n+=1) {
@@ -561,15 +569,15 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
                     Vector2 nearby_particle_position = nearby_particle->getPosition();
                     Qualities nearby_qualities = nearby_particle->getQualities();
 
-                    // Calculate its effect on the force and add it to the net force.
                     Vector2 position_difference = Vector2Subtract(nearby_particle_position, particle_position);
-                    float distance_squared = Vector2LengthSqr(position_difference);
-                    if (distance_squared < (particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
-                        continue;
+
+                    if (Vector2Length(position_difference) < particle->getRadius()) {
+                        //continue;
                     }
-                    Vector2 direction = Vector2Normalize(position_difference);
-        
-                    net_force = Vector2Add(net_force, Vector2Scale(direction, qualities.getQuality(Mass)*nearby_qualities.getQuality(Mass)/distance_squared));
+
+                    for (size_t i=0; i<partial_force_effects.size(); i+=1) {
+                        force_components[i] = Vector2Add(force_components[i], (partial_force_effects[i])(nearby_qualities, position_difference));
+                    }
                 }
             }
             // For every other particle in this chunk.
@@ -584,8 +592,16 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
                 Qualities nearby_qualities = nearby_particle->getQualities();
                 
                 Vector2 position_difference = Vector2Subtract(nearby_particle_position, particle_position);
-                Vector2 direction = Vector2Normalize(position_difference);
 
+                if (Vector2Length(position_difference) < particle->getRadius()) {
+                    //continue;
+                }
+
+                for (size_t i=0; i<partial_force_effects.size(); i+=1) {
+                    force_components[i] = Vector2Add(force_components[i], (partial_force_effects[i])(nearby_qualities, position_difference));
+                }
+
+                /*
                 float distance_squared = Vector2LengthSqr(position_difference);
                 if (distance_squared > (particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
                     net_force = Vector2Add(net_force, Vector2Scale(direction, qualities.getQuality(Mass)*nearby_qualities.getQuality(Mass)/distance_squared));
@@ -598,9 +614,15 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
                     float compression = particle->getQuality(QualityTypes::Compression);
                     particle->setQuality(QualityTypes::Compression, 0);
                 }
+                */
             }
 
-            Vector2 acceleration = Vector2Scale(net_force, 1/qualities.getQuality(Mass));
+            Vector2 final_force = {0,0};
+            for (size_t i=0; i<partial_force_effects.size(); i+=1) {
+                final_force = Vector2Add(final_force, (final_force_effects[i])(particle->getQualities(), Vector2Add(force_components[i], base_force_components[i])));
+            }
+
+            Vector2 acceleration = Vector2Scale(final_force, 1/qualities.getQuality(Mass));
             particle->setVelocity(Vector2Add(particle->getVelocity(), acceleration));
             Vector2 velocity = particle->getVelocity();
             if (Vector2Length(velocity) > 30) {

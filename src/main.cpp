@@ -31,29 +31,32 @@ int main()
     
     // Defining a few different particle types to use.
     
+    const std::vector<ForceFunction> particle_force_functions = {partialForce};
+    const std::vector<ForceFunction> particle_final_force_functions = {finalizeForce};
+
     Qualities test_qualities0 = Qualities();
     test_qualities0.setQuality(QualityTypes::Mass, 1000.0);
     test_qualities0.setQuality(QualityTypes::Charge, -0.4);
-    //test_qualities0.setQuality(QualityTypes::Restitution, 0.7);
-    ParticleType test_particle_type0 = ParticleType(30.0, test_qualities0, Color{20, 20, 20, 255});
+    test_qualities0.setQuality(QualityTypes::Restitution, 0.7);
+    ParticleType test_particle_type0 = ParticleType(30.0, test_qualities0, Color{20, 20, 20, 255}, particle_force_functions, particle_final_force_functions);
     
     Qualities test_qualities1 = Qualities();
     test_qualities1.setQuality(QualityTypes::Mass, 3.0);
     test_qualities1.setQuality(QualityTypes::Charge, 5.0);
-    //test_qualities1.setQuality(QualityTypes::Restitution, 0.95);
-    ParticleType test_particle_type1 = ParticleType(10.0, test_qualities1, Color{240, 50, 20, 255});
+    test_qualities1.setQuality(QualityTypes::Restitution, 0.95);
+    ParticleType test_particle_type1 = ParticleType(10.0, test_qualities1, Color{240, 50, 20, 255}, particle_force_functions, particle_final_force_functions);
     
     Qualities test_qualities2 = Qualities();
     test_qualities2.setQuality(QualityTypes::Mass, 1.5);
     test_qualities2.setQuality(QualityTypes::Charge, 0.0);
-    //test_qualities2.setQuality(QualityTypes::Restitution, 0.1);
-    ParticleType test_particle_type2 = ParticleType(4.0, test_qualities2, Color{220, 220, 20, 255});
+    test_qualities2.setQuality(QualityTypes::Restitution, 0.1);
+    ParticleType test_particle_type2 = ParticleType(4.0, test_qualities2, Color{220, 220, 20, 255}, particle_force_functions, particle_final_force_functions);
 
     Qualities test_qualities3 = Qualities();
     test_qualities3.setQuality(QualityTypes::Mass, 10.0);
     test_qualities3.setQuality(QualityTypes::Charge, -4.0);
-    //test_qualities3.setQuality(QualityTypes::Restitution, 0.95);
-    ParticleType test_particle_type3 = ParticleType(20.0, test_qualities3, Color{40, 40, 200, 255});
+    test_qualities3.setQuality(QualityTypes::Restitution, 0.95);
+    ParticleType test_particle_type3 = ParticleType(20.0, test_qualities3, Color{40, 40, 200, 255}, particle_force_functions, particle_final_force_functions);
 
     ParticleType types[4] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3};
     
@@ -61,7 +64,7 @@ int main()
     size_t chunks_wide = 30;
     size_t chunks_tall = 30;
     float chunk_size = 300;
-    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1100, 10, 6, 5);
+    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1100, 10, 6, 5, particle_force_functions, particle_final_force_functions);
     
     // Main loop
     //--------------------------------------------------------------------------------------

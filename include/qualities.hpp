@@ -10,6 +10,9 @@ enum QualityTypes {
     Charge,
     Restitution,
     Compression,
+    Strange_1,
+    Strange_2,
+    Strange_3,
     COUNT // Not a type, just used to count how many qualities there are. Always keep this enum last, as it's used to count the number of quality types.
 };
 
