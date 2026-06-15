@@ -4,6 +4,7 @@
 #include <vector>
 #include "particle.hpp"
 #include <thread>
+#include "thread_pool.hpp"
 
 // A qualities holder is anything we want to be able to get qualities from with an associated position.
 // That is, chunks and superchunks.
@@ -168,6 +169,9 @@ class Simulation {
 
         // How many length divisions of a chunk to use to create the subchunks (used for collisions, not forces).
         size_t chunk_divisions;
+
+        // A thread pool used for some calculations.
+        ThreadPool thread_pool = ThreadPool();
 
     public:
         // Constructor.

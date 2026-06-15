@@ -78,6 +78,8 @@ int main()
     
     ParticleType types[7] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3, test_particle_type4, test_particle_type5, test_particle_type6};
     
+
+    // TODO: I did the thread pooling (stack overflow did the thread pooling).
     /*
      * My machine has 20 cores. I found setting the max threads between 6 and 8 was best. Too few, and nothing parallelizes.
      *      Too many, and the scheduler seems to just put them on the same core.
@@ -89,10 +91,10 @@ int main()
      * In most cases, very few collisions checks are needed, I usually set it between 10 and 20.
      */
     // The simulation itself.
-    size_t      chunks_wide  = 30;
-    size_t      chunks_tall  = 30;
-    float       chunk_size   = 600;
-    Simulation  simulation   = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10, 7, 10);
+    size_t      chunks_wide  = 40;
+    size_t      chunks_tall  = 40;
+    float       chunk_size   = 450;
+    Simulation  simulation   = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10, 7, 20);
     
     // Main loop
     //--------------------------------------------------------------------------------------

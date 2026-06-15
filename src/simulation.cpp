@@ -330,6 +330,8 @@ Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size,
     unsigned int cores_available = std::thread::hardware_concurrency();
     size_t attempted_threads = (max_threads == 0) ? 1 : max_threads;
     this->max_threads = std::min((size_t)cores_available-1, max_threads-1);
+
+    thread_pool.Start();
 }
 
 /**
@@ -491,18 +493,25 @@ void Simulation::determineForces() {
 
     // Make additional threads to divide the work.
     for (size_t i=1; i<max_threads; i+=1) {
-        threads.push_back(std::thread(&Simulation::threadDetermineForces, *this, i*per_thread, std::min((i+1)*per_thread,chunks_available)));
+        // I have no clue at all what's going on here.
+        // https://stackoverflow.com/questions/32207423/pass-by-value-a-move-only-structure-to-function
+        size_t a = i*per_thread;
+        size_t b = std::min((i+1)*per_thread,chunks_available);
+        std::function<void()> c = [this, a, b](){Simulation::threadDetermineForces(std::move(a), std::move(b));};
+        thread_pool.QueueJob(c);
+        //threads.push_back(std::thread(&Simulation::threadDetermineForces, *this, i*per_thread, std::min((i+1)*per_thread,chunks_available)));
     }
 
     // With the other threads now going, do some work on this thread.
     threadDetermineForces(0,per_thread);
 
+    while (thread_pool.busy()) {};
     // With the work on this thread done, now just wait for all the other to finish.
-    for (size_t i=0; i<threads.size(); i+=1) {
-        if (threads[i].joinable()) {
-            threads[i].join();
-        }
-    }
+    //for (size_t i=0; i<threads.size(); i+=1) {
+    //    if (threads[i].joinable()) {
+    //        threads[i].join();
+    //    }
+    //}
 }
 
 
