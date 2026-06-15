@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <thread>
+#include "force_functions.hpp"
 
 // TODO: Make functions for coordinate conversion.
 
@@ -487,31 +488,20 @@ bool Simulation::ensureChunkIsInactive(Chunk* chunk) {
  * Determines forces on each particle in the simulation and uses them to apply acceleration.
  */
 void Simulation::determineForces() {
-    std::vector<std::thread> threads = std::vector<std::thread>();
-    size_t chunks_available = active_chunks.size();
-    size_t per_thread = (size_t) ceil(((double)chunks_available) / (double)(max_threads+1));
+    // Queue tasks for the thread pool.
+    // They are queued on a chunk-by-chunk basis.
+    for (size_t c=0; c<active_chunks.size(); c+=1) {
+        // I don't really know what this line does, but it lets me queue the function.
+        // Source - https://stackoverflow.com/a/32208385
+        // Posted by AndyG, modified by community. See post 'Timeline' for change history
+        // Retrieved 2026-06-15, License - CC BY-SA 3.0
+        std::function<void()> task = [this, c](){Simulation::threadDetermineForces(std::move(c));};
 
-    // Make additional threads to divide the work.
-    for (size_t i=1; i<max_threads; i+=1) {
-        // I have no clue at all what's going on here.
-        // https://stackoverflow.com/questions/32207423/pass-by-value-a-move-only-structure-to-function
-        size_t a = i*per_thread;
-        size_t b = std::min((i+1)*per_thread,chunks_available);
-        std::function<void()> c = [this, a, b](){Simulation::threadDetermineForces(std::move(a), std::move(b));};
-        thread_pool.QueueJob(c);
-        //threads.push_back(std::thread(&Simulation::threadDetermineForces, *this, i*per_thread, std::min((i+1)*per_thread,chunks_available)));
+        thread_pool.QueueJob(task);
     }
 
-    // With the other threads now going, do some work on this thread.
-    threadDetermineForces(0,per_thread);
-
-    while (thread_pool.busy()) {};
     // With the work on this thread done, now just wait for all the other to finish.
-    //for (size_t i=0; i<threads.size(); i+=1) {
-    //    if (threads[i].joinable()) {
-    //        threads[i].join();
-    //    }
-    //}
+    while (thread_pool.busy()) {};
 }
 
 
@@ -521,123 +511,93 @@ void Simulation::determineForces() {
  * Calculate all the forces on particles, and how they accelerate.
  * Updates their velocities based on these accelerations.
  */
-void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclusive) {
-    // For each chunk with particles in it.
-    for (size_t c = start_inclusive; c < end_exclusive; c += 1) {
-        Chunk* chunk = active_chunks[c];
+void Simulation::threadDetermineForces(size_t active_chunk_index) {
+    Chunk* chunk = active_chunks[active_chunk_index];
 
-        // Get the chunk's coordinates.
-        size_t x = chunk->getX();
-        size_t y = chunk->getY();
+    // Get the chunk's coordinates.
+    size_t x = chunk->getX();
+    size_t y = chunk->getY();
 
-        // Get the nearby and distant chunk lists for the chunk.
-        std::vector<Chunk*>* nearby = chunk->getNearbyChunks();
-        std::vector<IQualitiesHolder*>* distant = chunk->getDistantChunks();
+    // Get the nearby and distant chunk lists for the chunk.
+    std::vector<Chunk*>* nearby = chunk->getNearbyChunks();
+    std::vector<IQualitiesHolder*>* distant = chunk->getDistantChunks();
+
+    // Tracks the influence of external forces, missing the effects of the particles they apply to.
+    std::vector<Vector2> base_force_components = std::vector<Vector2>();
+    for (size_t i=0; i<FORCE_COUNT; i+=1) {
+        base_force_components.push_back({0,0});
+    }
     
-        // Tracks the influence of external forces, missing the effects of the particles they apply to.
-        std::vector<Vector2> base_force_components = std::vector<Vector2>();
-        for (size_t i=0; i<FORCE_COUNT; i+=1) {
-            base_force_components.push_back({0,0});
-        }
+    // For every distant chunk.
+    for (size_t d=0; d<distant->size(); d+=1) {
+        IQualitiesHolder* distant_chunk = (*distant)[d];
+
+        // Get the distant chunk's qualities and position.
+        Qualities qualities = distant_chunk->getQualities();
         
-        // For every distant chunk.
-        for (size_t d=0; d<distant->size(); d+=1) {
-            IQualitiesHolder* distant_chunk = (*distant)[d];
+        // Compute the force effects from the chunk.
+        Vector2 position_difference = Vector2Subtract(distant_chunk->getSimulationPosition(), chunk->getSimulationPosition());
+        for (size_t i=0; i<FORCE_COUNT; i+=1) {
+            base_force_components[i] = Vector2Add(base_force_components[i], (PARTIAL_FORCE_FUNCTIONS[i])(qualities, position_difference));
+        }
+    }
 
-            // Get the distant chunk's qualities and position.
-            Qualities qualities = distant_chunk->getQualities();
-            
-            // Compute the force effects from the chunk.
-            Vector2 position_difference = Vector2Subtract(distant_chunk->getSimulationPosition(), chunk->getSimulationPosition());
-            for (size_t i=0; i<FORCE_COUNT; i+=1) {
-                base_force_components[i] = Vector2Add(base_force_components[i], (PARTIAL_FORCE_FUNCTIONS[i])(qualities, position_difference));
-            }
+    // For every particle in this chunk.
+    for (size_t p=0; p< chunk->getParticles()->size(); p+=1) {
+        Particle* particle = &(*chunk->getParticles())[p];
+
+        Vector2 distance_forces = {0,0};
+        for (size_t i=0; i<FORCE_COUNT; i+=1) {
+            distance_forces = Vector2Add(distance_forces, FINAL_FORCE_FUNCTIONS[i](particle, base_force_components[i]));
         }
 
-        // For every particle in this chunk.
-        for (size_t p=0; p< chunk->getParticles()->size(); p+=1) {
-            Particle* particle = &(*chunk->getParticles())[p];
+        // Get the particle's position and qualities.
+        Vector2 particle_position = particle->getPosition();
+        Qualities qualities = particle->getQualities();
 
-            // Get the particle's position and qualities.
-            Vector2 particle_position = particle->getPosition();
-            Qualities qualities = particle->getQualities();
+        std::vector<Vector2> force_components = std::vector<Vector2>();
+        for (size_t i=0; i<FORCE_COUNT; i+=1) {
+            force_components.push_back({0,0});
+        }
 
-
-            std::vector<Vector2> force_components = std::vector<Vector2>();
-            for (size_t i=0; i<FORCE_COUNT; i+=1) {
-                force_components.push_back({0,0});
-            }
-
-            // For every other nearby chunk.
-            for (size_t n=0; n<nearby->size(); n+=1) {
-                Chunk* nearby_chunk = (*nearby)[n];
-                // For every particle it contains.
-                std::vector<Particle>* nearby_particles = nearby_chunk->getParticles();
-                for (size_t np=0; np<nearby_particles->size(); np += 1) {
-                    Particle* nearby_particle = &(*nearby_particles)[np];
-                    Vector2 nearby_particle_position = nearby_particle->getPosition();
-                    Qualities nearby_qualities = nearby_particle->getQualities();
-
-                    Vector2 position_difference = Vector2Subtract(nearby_particle_position, particle_position);
-
-                    if (Vector2Length(position_difference) < particle->getRadius()) {
-                        //continue;
-                    }
-
-                    for (size_t i=0; i<FORCE_COUNT; i+=1) {
-                        force_components[i] = Vector2Add(force_components[i], (PARTIAL_FORCE_FUNCTIONS[i])(nearby_qualities, position_difference));
-                    }
-                }
-            }
-            // For every other particle in this chunk.
-            // For every other nearby chunk.
-            for (size_t n=0; n<chunk->getParticles()->size(); n+=1) {
-                // Skip over self.
-                if (n == p) {
-                    continue;
-                }
-                Particle* nearby_particle = &(*chunk->getParticles())[n];
-                Vector2 nearby_particle_position = nearby_particle->getPosition();
-                Qualities nearby_qualities = nearby_particle->getQualities();
-                
-                Vector2 position_difference = Vector2Subtract(nearby_particle_position, particle_position);
-
-                if (Vector2Length(position_difference) < particle->getRadius()) {
-                    //continue;
-                }
+        // For every other nearby chunk.
+        for (size_t n=0; n<nearby->size(); n+=1) {
+            Chunk* nearby_chunk = (*nearby)[n];
+            // For every particle it contains.
+            std::vector<Particle>* nearby_particles = nearby_chunk->getParticles();
+            for (size_t np=0; np<nearby_particles->size(); np += 1) {
+                Particle* nearby_particle = &(*nearby_particles)[np];
 
                 for (size_t i=0; i<FORCE_COUNT; i+=1) {
-                    force_components[i] = Vector2Add(force_components[i], (PARTIAL_FORCE_FUNCTIONS[i])(nearby_qualities, position_difference));
+                    force_components[i] = Vector2Add(force_components[i], (PARTICLE_FORCE_FUNCTIONS[i])(particle, nearby_particle));
                 }
-
-                /*
-                float distance_squared = Vector2LengthSqr(position_difference);
-                if (distance_squared > (particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
-                    net_force = Vector2Add(net_force, Vector2Scale(direction, qualities.getQuality(Mass)*nearby_qualities.getQuality(Mass)/distance_squared));
-                } else if (distance_squared < 0.95*(particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius())) {
-                    float compression = particle->getQuality(QualityTypes::Compression);
-                    particle->setQuality(QualityTypes::Compression, std::min(compression+0.1,100.0));
-                    float scale = (-qualities.getQuality(Mass))*(nearby_particle->getQuality(QualityTypes::Mass))/(qualities.getQuality(Mass)); //(particle->getRadius()+nearby_particle->getRadius())*(particle->getRadius()+nearby_particle->getRadius()) / (distance_squared + 0.05);
-                    net_force = Vector2Add(net_force, Vector2Scale(direction, scale*compression));
-                } else {
-                    float compression = particle->getQuality(QualityTypes::Compression);
-                    particle->setQuality(QualityTypes::Compression, 0);
-                }
-                */
             }
-
-            Vector2 final_force = {0,0};
+        }
+        // For every other particle in this chunk.
+        // For every other nearby chunk.
+        for (size_t n=0; n<chunk->getParticles()->size(); n+=1) {
+            // Skip over self.
+            if (n == p) {
+                continue;
+            }
+            Particle* nearby_particle = &(*chunk->getParticles())[n];
+            
             for (size_t i=0; i<FORCE_COUNT; i+=1) {
-                final_force = Vector2Add(final_force, (FINAL_FORCE_FUNCTIONS[i])(particle->getQualities(), Vector2Add(force_components[i], base_force_components[i])));
+                force_components[i] = Vector2Add(force_components[i], (PARTICLE_FORCE_FUNCTIONS[i])(particle, nearby_particle));
             }
+        }
 
-            Vector2 acceleration = Vector2Scale(final_force, 1/qualities.getQuality(Mass));
-            particle->setVelocity(Vector2Add(particle->getVelocity(), acceleration));
-            Vector2 velocity = particle->getVelocity();
-            if (Vector2Length(velocity) > 30) {
-                velocity = Vector2Scale(Vector2Normalize(velocity), 30);
-                particle->setVelocity(velocity);
-            }
+        Vector2 final_force = distance_forces;
+        for (size_t i=0; i<FORCE_COUNT; i+=1) {
+            final_force = Vector2Add(final_force, force_components[i]);
+        }
+
+        Vector2 acceleration = Vector2Scale(final_force, 1/qualities.getQuality(Mass));
+        particle->setVelocity(Vector2Add(particle->getVelocity(), acceleration));
+        Vector2 velocity = particle->getVelocity();
+        if (Vector2Length(velocity) > 30) {
+            velocity = Vector2Scale(Vector2Normalize(velocity), 30);
+            particle->setVelocity(velocity);
         }
     }
 }

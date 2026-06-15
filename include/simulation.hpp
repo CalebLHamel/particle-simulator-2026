@@ -162,7 +162,7 @@ class Simulation {
         void placeParticle(Particle particle);
 
         // A helper function to determine forces that supports a thread.
-        void threadDetermineForces(size_t start_inclusive, size_t end_exclusive);
+        void threadDetermineForces(size_t active_chunk_index);
 
         // How many additional threads will the simulation attempt to use at a maximum (constrained by hardware).
         size_t max_threads;

@@ -32,15 +32,15 @@ int main()
     // Defining a few different particle types to use.
 
     Qualities test_qualities0 = Qualities();
-    test_qualities0.setQuality(QualityTypes::Mass, 1000.0);
-    test_qualities0.setQuality(QualityTypes::Charge, -0.4);
-    test_qualities0.setQuality(QualityTypes::Restitution, 0.7);
-    ParticleType test_particle_type0 = ParticleType(30.0, test_qualities0, Color{20, 20, 20, 255});
+    test_qualities0.setQuality(QualityTypes::Mass, 1.0);
+    test_qualities0.setQuality(QualityTypes::Charge, -4.0);
+    test_qualities0.setQuality(QualityTypes::Restitution, 1);
+    ParticleType test_particle_type0 = ParticleType(4.0, test_qualities0, Color{20, 20, 240, 255});
     
     Qualities test_qualities1 = Qualities();
-    test_qualities1.setQuality(QualityTypes::Mass, 30.0);
-    test_qualities1.setQuality(QualityTypes::Charge, 5.0);
-    test_qualities1.setQuality(QualityTypes::Restitution, 0.95);
+    test_qualities1.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities1.setQuality(QualityTypes::Charge, 120.0);
+    test_qualities1.setQuality(QualityTypes::Restitution, 1);
     ParticleType test_particle_type1 = ParticleType(10.0, test_qualities1, Color{240, 50, 20, 255});
     
     Qualities test_qualities2 = Qualities();
@@ -58,7 +58,7 @@ int main()
     Qualities test_qualities4 = Qualities();
     test_qualities4.setQuality(QualityTypes::Mass, 10.0);
     test_qualities4.setQuality(QualityTypes::Strange_1, 8.0);
-    test_qualities4.setQuality(QualityTypes::Charge, -10.0);
+    test_qualities4.setQuality(QualityTypes::Charge, -40.0);
     test_qualities4.setQuality(QualityTypes::Restitution, 0.8);
     ParticleType test_particle_type4 = ParticleType(10.0, test_qualities4, Color{20, 220, 220, 255});
     
@@ -72,7 +72,7 @@ int main()
     Qualities test_qualities6 = Qualities();
     test_qualities6.setQuality(QualityTypes::Mass, 10.0);
     test_qualities6.setQuality(QualityTypes::Strange_3, 8.0);
-    test_qualities6.setQuality(QualityTypes::Charge, 20.0);
+    test_qualities6.setQuality(QualityTypes::Charge, 40.0);
     test_qualities6.setQuality(QualityTypes::Restitution, 0.8);
     ParticleType test_particle_type6 = ParticleType(10.0, test_qualities6, Color{220, 20, 220, 255});
     
@@ -91,10 +91,10 @@ int main()
      * In most cases, very few collisions checks are needed, I usually set it between 10 and 20.
      */
     // The simulation itself.
-    size_t      chunks_wide  = 40;
-    size_t      chunks_tall  = 40;
+    size_t      chunks_wide  = 50;
+    size_t      chunks_tall  = 50;
     float       chunk_size   = 450;
-    Simulation  simulation   = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10, 7, 20);
+    Simulation  simulation   = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10, 7, 30);
     
     // Main loop
     //--------------------------------------------------------------------------------------
