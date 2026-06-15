@@ -41,7 +41,6 @@ void SuperChunk::updateQualities() {
 /**
  * Gets the X index of the superchunk in the simulation's superchunk grid.
  */
-
 size_t SuperChunk::getX() {
     return x;
 }
@@ -80,7 +79,6 @@ void SuperChunk::updatePosition() {
 std::vector<Chunk*>* SuperChunk::getSubChunks() {
     return &sub_chunks;
 }
-
 
 /**
  * Constructor method. Creates an empty chunk.
@@ -234,7 +232,7 @@ std::vector<Particle*>* Chunk::getParticlesInSubchunk(size_t x, size_t y) {
  * local_radius             : Specifies the distance at which the particle forces should still be calculated on a per-particle basis.
  * max_collision_iterations : Specifies the limit of how many iterations the collision solver is allowed to process.
  */
-Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions) {
+Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, size_t max_collision_iterations, size_t max_threads, size_t chunk_divisions) {
     // Set fields.
     this->count = 0;
     this->chunk_size = chunk_size;
@@ -330,22 +328,24 @@ Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size,
 
     // Set the max threads (used for force checking).
     unsigned int cores_available = std::thread::hardware_concurrency();
+    size_t attempted_threads = (max_threads == 0) ? 1 : max_threads;
     this->max_threads = std::min((size_t)cores_available-1, max_threads-1);
 }
 
 /**
  * Places a particle in the simulation.
+ * particle : The particle to place within the simulation.
  */
 void Simulation::placeParticle(Particle particle) {
     // Get the particle position.
     Vector2 position = particle.getPosition();
 
     // Divide by chunk size and floor to get chunk coordinates.
-    int x = floor(position.x / chunk_size);
-    int y = floor(position.y / chunk_size);
+    size_t x = floor(position.x / chunk_size);
+    size_t y = floor(position.y / chunk_size);
 
-    x = std::max(0, std::min(x, (int)chunks_wide-1));
-    y = std::max(0, std::min(y, (int)chunks_tall-1));
+    x = std::max((size_t)0, std::min(x, (size_t)chunks_wide-1));
+    y = std::max((size_t)0, std::min(y, (size_t)chunks_tall-1));
 
     // Add particle to the chunks.
     chunks[x][y].getParticles()->push_back(particle);
@@ -356,6 +356,7 @@ void Simulation::placeParticle(Particle particle) {
 
 /**
  * Adds a particle to the simulation.
+ * particle : The particle to add to the simulation.
  */
 void Simulation::addParticle(Particle particle) {
     count += 1;
@@ -365,14 +366,15 @@ void Simulation::addParticle(Particle particle) {
 /**
  * Gets the total number of particles in the simulation.
  */
-int Simulation::getCount() {
+size_t Simulation::getCount() {
     return count;
 }
 
 /**
  * Gets all of the particle in a chunk.
+ * x, y : The x and y chunk coordinates at which to get the particles. 
  */
-std::vector<Particle>* Simulation::getParticlesInChunk(int x, int y) {
+std::vector<Particle>* Simulation::getParticlesInChunk(size_t x, size_t y) {
     return chunks[x][y].getParticles();
 }
 
@@ -409,8 +411,8 @@ void Simulation::moveParticles() {
             Vector2 position = particle.getPosition();
 
             // Divide by chunk size and floor to get chunk coordinates.
-            int x = floor(position.x / chunk_size);
-            int y = floor(position.y / chunk_size);
+            size_t x = floor(position.x / chunk_size);
+            size_t y = floor(position.y / chunk_size);
 
             // If the particle no-longer fits in the chunk, move it.
             if (x != chunk->getX() || y != chunk->getY()) {

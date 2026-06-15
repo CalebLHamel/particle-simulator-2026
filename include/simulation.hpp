@@ -148,14 +148,14 @@ class Simulation {
         float local_radius;
         
         // How many attempts to resolve collisions can be taken per call?
-        int max_collision_iterations;
+        size_t max_collision_iterations;
 
         // How large the simulation space is.
         size_t chunks_wide;
         size_t chunks_tall;
         
         // How many particles the simulation contains.
-        int count;
+        size_t count;
 
         // Places a particle within the simulation. Used for some internal logic.
         void placeParticle(Particle particle);
@@ -171,13 +171,13 @@ class Simulation {
 
     public:
         // Constructor.
-        Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions);
+        Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, size_t max_collision_iterations, size_t max_threads, size_t chunk_divisions);
 
         // Adds a particle to the simulation.
         void addParticle(Particle particle);
 
         // Gets the particle count.
-        int getCount();
+        size_t getCount();
 
         // Determines forces on all particles and applies acceleration.
         void determineForces();
@@ -186,7 +186,7 @@ class Simulation {
         void manageCollisions();
 
         // Gets all the particles in a chunk.
-        std::vector<Particle>* getParticlesInChunk(int x, int y);
+        std::vector<Particle>* getParticlesInChunk(size_t x, size_t y);
 
         // Moves all the particles.
         void moveParticles();

@@ -2,19 +2,12 @@
 #include "raymath.h"
 #include <stdio.h>
 
-Vector2 partialForce(Qualities qualities, Vector2 position_difference) {
-    float distance_squared = Vector2LengthSqr(position_difference);
-    Vector2 direction = Vector2Normalize(position_difference);
-    float scale = qualities.getQuality(Mass) / distance_squared;
-
-    return Vector2Scale(direction, scale);
-}
-
-Vector2 finalizeForce(Qualities particle_qualities, Vector2 partial_force) {
-    return Vector2Scale(partial_force, particle_qualities.getQuality(Mass));
-}
-
-// Constructor.
+/**
+ * Constructor.
+ * radius   : Radius of the particle type.
+ * qualities: The default set of qualities for the a particle type.
+ * color    : The default color.
+ */
 ParticleType::ParticleType(float radius, Qualities qualities, Color color) {
     this->radius = radius;
     this->default_qualities = qualities;
@@ -23,6 +16,7 @@ ParticleType::ParticleType(float radius, Qualities qualities, Color color) {
 
 /**
  * Gets the value of the default quality of this type.
+ * type     : The type of quality to get.
  */
 float ParticleType::getQuality(QualityTypes type) {
     return this->default_qualities.getQuality(type);

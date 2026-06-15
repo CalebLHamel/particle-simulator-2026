@@ -50,45 +50,77 @@ int main()
     ParticleType test_particle_type2 = ParticleType(4.0, test_qualities2, Color{220, 220, 20, 255});
 
     Qualities test_qualities3 = Qualities();
-    test_qualities3.setQuality(QualityTypes::Mass, 100.0);
-    test_qualities3.setQuality(QualityTypes::Charge, -4.0);
+    test_qualities3.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities3.setQuality(QualityTypes::Charge, -30.0);
     test_qualities3.setQuality(QualityTypes::Restitution, 0.95);
-    ParticleType test_particle_type3 = ParticleType(20.0, test_qualities3, Color{40, 40, 200, 255});
+    ParticleType test_particle_type3 = ParticleType(10.0, test_qualities3, Color{40, 40, 200, 255});
 
-    ParticleType types[4] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3};
+    Qualities test_qualities4 = Qualities();
+    test_qualities4.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities4.setQuality(QualityTypes::Strange_1, 8.0);
+    test_qualities4.setQuality(QualityTypes::Charge, -10.0);
+    test_qualities4.setQuality(QualityTypes::Restitution, 0.8);
+    ParticleType test_particle_type4 = ParticleType(10.0, test_qualities4, Color{20, 220, 220, 255});
     
+    Qualities test_qualities5 = Qualities();
+    test_qualities5.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities5.setQuality(QualityTypes::Strange_2, 8.0);
+    test_qualities5.setQuality(QualityTypes::Charge, 0.0);
+    test_qualities5.setQuality(QualityTypes::Restitution, 0.8);
+    ParticleType test_particle_type5 = ParticleType(10.0, test_qualities5, Color{220, 220, 20, 255});
+    
+    Qualities test_qualities6 = Qualities();
+    test_qualities6.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities6.setQuality(QualityTypes::Strange_3, 8.0);
+    test_qualities6.setQuality(QualityTypes::Charge, 20.0);
+    test_qualities6.setQuality(QualityTypes::Restitution, 0.8);
+    ParticleType test_particle_type6 = ParticleType(10.0, test_qualities6, Color{220, 20, 220, 255});
+    
+    ParticleType types[7] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3, test_particle_type4, test_particle_type5, test_particle_type6};
+    
+    /*
+     * My machine has 20 cores. I found setting the max threads between 6 and 8 was best. Too few, and nothing parallelizes.
+     *      Too many, and the scheduler seems to just put them on the same core.
+     *      I also didn't bother to figure out how to pool threads, so there is a greater cost to using them.
+     * A max chunks of ~1000 is recommended. Chunks help forces by letting some qualities pool together at the cost of precision,
+     *      but too many chunks leads to too many iterations and becomes harmful.
+     * Keep the chunk size larger than the smallest particle radius.
+     *      Also make sure that the subdivisions are larger than the smallest particle radius too.
+     * In most cases, very few collisions checks are needed, I usually set it between 10 and 20.
+     */
     // The simulation itself.
-    size_t chunks_wide = 30;
-    size_t chunks_tall = 30;
-    float chunk_size = 600;
-    Simulation simulation = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10, 6, 5);
+    size_t      chunks_wide  = 30;
+    size_t      chunks_tall  = 30;
+    float       chunk_size   = 600;
+    Simulation  simulation   = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10, 7, 10);
     
     // Main loop
     //--------------------------------------------------------------------------------------
     
     // Some variables for use in the loop.
-    int type_selection = 0;
-    Vector2 launch_velocity = Vector2{0,0};
-    Vector2 camera_offset = Vector2{screenWidth/2, screenHeight/2};
-    Vector2 camera_position = Vector2{0,0};
-    float camera_scale = 1.0;
+    size_t      type_selection  = 0;
+    Vector2     launch_velocity = Vector2{0,0};
+    Vector2     camera_offset   = Vector2{screenWidth/2, screenHeight/2};
+    Vector2     camera_position = Vector2{0,0};
+    float       camera_scale    = 1.0;
+    bool        is_paused       = false;
     
     // Creating a basic circle texture.
-    int textureSize = 128;
-    Image circle_image = GenImageColor(textureSize, textureSize, BLANK);
+    int         textureSize     = 128;
+    Image       circle_image    = GenImageColor(textureSize, textureSize, BLANK);
     ImageDrawCircle(&circle_image, textureSize/2, textureSize/2, textureSize/2, WHITE);
-    Texture2D circle_texture = LoadTextureFromImage(circle_image);
+    Texture2D   circle_texture  = LoadTextureFromImage(circle_image);
     UnloadImage(circle_image); // Unloading CPU-side image.
     
     // Used for the rendering loop.
-    std::vector<Vector2> positions = std::vector<Vector2>(100000);
-    std::vector<float> radii = std::vector<float>(100000);
-    std::vector<Color> colors = std::vector<Color>(100000);
+    std::vector<Vector2>    positions   = std::vector<Vector2>(100000);
+    std::vector<float>      radii       = std::vector<float>(100000);
+    std::vector<Color>      colors      = std::vector<Color>(100000);
 
     // Tracks how long some different stages of the simulation take.
-    double force_time = 0;
-    double collision_time = 0;
-    double move_time = 0;
+    double force_time       = 0;
+    double collision_time   = 0;
+    double move_time        = 0;
     
     while (!WindowShouldClose())    // Detect window close button or ESC keyc
     {
@@ -104,23 +136,26 @@ int main()
         if (IsKeyDown(KEY_W))    camera_position.y -= 10.0f * camera_scale;
         if (IsKeyDown(KEY_S))    camera_position.y += 10.0f * camera_scale;
 
+        // Pause and unpause the simulation.
+        if (IsKeyPressed(KEY_SPACE)) is_paused = !is_paused;
+
         // E for 1 particle until next press. R for 1 per frame while held.
         if (IsKeyPressed(KEY_E) || IsKeyDown(KEY_R)) {
             Vector2 position = GetMousePosition();
-            position = Vector2{(position.x-camera_offset.x)*camera_scale+camera_offset.x+camera_position.x,(position.y-camera_offset.y)*camera_scale+camera_offset.y+camera_position.y};
+                    position = Vector2{(position.x-camera_offset.x)*camera_scale+camera_offset.x+camera_position.x,(position.y-camera_offset.y)*camera_scale+camera_offset.y+camera_position.y};
 
             Particle new_particle = Particle::makeParticleFromType(types[type_selection], position, launch_velocity);
             simulation.addParticle(new_particle);
-            //particles.push_back(Particle::makeParticleFromType(types[type_selection], position, launch_velocity));
         }
+
         // Spawns many particles at a time, per frame, while T is held.
         if (IsKeyDown(KEY_T)) {
             Vector2 position = GetMousePosition();
             Vector2 base_position = Vector2{(position.x-camera_offset.x)*camera_scale+camera_offset.x+camera_position.x,(position.y-camera_offset.y)*camera_scale+camera_offset.y+camera_position.y};
 
             float offset = types[type_selection].getRadius()*10;
-            for (int i = 0; i < 5; i++) {
-                for (int j = 0; j < 5; j++) {
+            for (size_t i = 0; i < 5; i++) {
+                for (size_t j = 0; j < 5; j++) {
                     Vector2 newpos = Vector2Add(base_position, Vector2{i*offset, j*offset});
                     Particle new_particle = Particle::makeParticleFromType(types[type_selection], newpos, launch_velocity);
                     simulation.addParticle(new_particle);
@@ -130,11 +165,11 @@ int main()
 
         // Used during some demonstrations. Just fills the simulation space with a random assortment of particles as set up inside the loop.
         if (IsKeyPressed(KEY_P)) {
-            for (int i=0; i<500; i+=1) {
+            for (size_t i=0; i<500; i+=1) {
                 float x = GetRandomValue(0, chunks_wide*chunk_size);
                 float y = GetRandomValue(0, chunks_tall*chunk_size);
                 Vector2 pos = {x,y};
-                Particle new_particle = Particle::makeParticleFromType(types[GetRandomValue(1,3)], pos, {GetRandomValue(-1,1),GetRandomValue(-1,1)});
+                Particle new_particle = Particle::makeParticleFromType(types[GetRandomValue(4,6)], pos, {(float)GetRandomValue(-1,1),(float)GetRandomValue(-1,1)});
                 simulation.addParticle(new_particle);
             }
         }
@@ -144,7 +179,7 @@ int main()
         if (IsKeyDown(KEY_X)) camera_scale = camera_scale + 0.1f;
 
         // Number row used to select types.
-        if (IsKeyPressed(KEY_ONE)) {
+        if        (IsKeyPressed(KEY_ONE)) {
             type_selection = 0;
         } else if (IsKeyPressed(KEY_TWO)) {
             type_selection = 1;
@@ -152,6 +187,12 @@ int main()
             type_selection = 2;
         } else if (IsKeyPressed(KEY_FOUR)) {
             type_selection = 3;
+        } else if (IsKeyPressed(KEY_FIVE)) {
+            type_selection = 4;
+        } else if (IsKeyPressed(KEY_SIX)) {
+            type_selection = 5;
+        } else if (IsKeyPressed(KEY_SEVEN)) {
+            type_selection = 6;
         }
 
         // Draw
@@ -225,21 +266,22 @@ int main()
 
         // These use a rudimentary weighted moving average. I didn't feel like setting up storage for many values, so it just weights itself against the prior.
         // The average is pretty effective over a few seconds and helped me identify where some slowdowns were.
-        
-        time = (GetTime()*1000);
-        simulation.moveParticles();
-        time = (GetTime()*1000) - time;
-        move_time = (59*move_time + time) / 60;
-        
-        time = (GetTime()*1000);
-        simulation.determineForces();
-        time = (GetTime()*1000) - time;
-        force_time = (59*force_time + time) / 60;
-        
-        time = (GetTime()*1000);
-        simulation.manageCollisions();
-        time = (GetTime()*1000) - time;
-        collision_time = (59*collision_time + time) / 60;
+        if (!is_paused) {
+            time = (GetTime()*1000);
+            simulation.moveParticles();
+            time = (GetTime()*1000) - time;
+            move_time = (59*move_time + time) / 60;
+            
+            time = (GetTime()*1000);
+            simulation.determineForces();
+            time = (GetTime()*1000) - time;
+            force_time = (59*force_time + time) / 60;
+            
+            time = (GetTime()*1000);
+            simulation.manageCollisions();
+            time = (GetTime()*1000) - time;
+            collision_time = (59*collision_time + time) / 60;
+        }
         
     }
 
