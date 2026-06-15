@@ -169,12 +169,9 @@ class Simulation {
         // How many length divisions of a chunk to use to create the subchunks (used for collisions, not forces).
         size_t chunk_divisions;
 
-        std::vector<ForceFunction> partial_force_effects;
-        std::vector<ForceFunction> final_force_effects;
-
     public:
         // Constructor.
-        Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions, std::vector<ForceFunction> partial_force_effects,std::vector<ForceFunction> final_force_effects);
+        Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions);
 
         // Adds a particle to the simulation.
         void addParticle(Particle particle);

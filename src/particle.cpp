@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <vector>
 
-Particle::Particle(float radius, Vector2 position, Vector2 velocity, Qualities qualities, Color color, std::vector<ForceFunction> partial_force_effects, std::vector<ForceFunction> final_force_effects) : ParticleType(radius, qualities, color, partial_force_effects, final_force_effects) {
+Particle::Particle(float radius, Vector2 position, Vector2 velocity, Qualities qualities, Color color) : ParticleType(radius, qualities, color) {
     this->position = position;
     this->prior_position = position;
     this->velocity = velocity;
@@ -23,7 +23,7 @@ Particle::Particle(float radius, Vector2 position, Vector2 velocity, Qualities q
  * Makes a particle with initial position and velocity.
  */
 Particle Particle::makeParticleFromType(ParticleType type, Vector2 position, Vector2 velocity) {
-    return Particle(type.getRadius(), position, velocity, type.getQualities(), type.getDefaultColor(), type.getPartialForceEffects(), type.getFinalForceEffects());
+    return Particle(type.getRadius(), position, velocity, type.getQualities(), type.getDefaultColor());
 };
 
 /**

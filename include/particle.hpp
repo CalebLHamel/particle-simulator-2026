@@ -25,11 +25,9 @@ private:
     // The particle's color.
     Color color;
 
-    std::vector<ForceFunction> force_functions;
-
 public:
     // Constructor.
-    Particle(float radius, Vector2 position, Vector2 velocity, Qualities qualities, Color color, std::vector<ForceFunction> partial_force_effects, std::vector<ForceFunction> final_force_effects);
+    Particle(float radius, Vector2 position, Vector2 velocity, Qualities qualities, Color color);
 
     // Makes a particle out of a particle type, meant for easy replication of similar particles.
     static Particle makeParticleFromType(ParticleType type, Vector2 position, Vector2 velocity);

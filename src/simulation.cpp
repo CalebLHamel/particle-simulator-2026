@@ -234,10 +234,8 @@ std::vector<Particle*>* Chunk::getParticlesInSubchunk(size_t x, size_t y) {
  * local_radius             : Specifies the distance at which the particle forces should still be calculated on a per-particle basis.
  * max_collision_iterations : Specifies the limit of how many iterations the collision solver is allowed to process.
  */
-Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions, std::vector<ForceFunction> partial_force_effects,std::vector<ForceFunction> final_force_effects) {
+Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, int max_collision_iterations, size_t max_threads, size_t chunk_divisions) {
     // Set fields.
-    this->partial_force_effects = partial_force_effects;
-    this->final_force_effects = final_force_effects;
     this->count = 0;
     this->chunk_size = chunk_size;
     this->local_radius = local_radius;
@@ -527,7 +525,7 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
     
         // Tracks the influence of external forces, missing the effects of the particles they apply to.
         std::vector<Vector2> base_force_components = std::vector<Vector2>();
-        for (size_t i=0; i<partial_force_effects.size(); i+=1) {
+        for (size_t i=0; i<FORCE_COUNT; i+=1) {
             base_force_components.push_back({0,0});
         }
         
@@ -540,8 +538,8 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
             
             // Compute the force effects from the chunk.
             Vector2 position_difference = Vector2Subtract(distant_chunk->getSimulationPosition(), chunk->getSimulationPosition());
-            for (size_t i=0; i<partial_force_effects.size(); i+=1) {
-                base_force_components[i] = Vector2Add(base_force_components[i], (partial_force_effects[i])(qualities, position_difference));
+            for (size_t i=0; i<FORCE_COUNT; i+=1) {
+                base_force_components[i] = Vector2Add(base_force_components[i], (PARTIAL_FORCE_FUNCTIONS[i])(qualities, position_difference));
             }
         }
 
@@ -555,7 +553,7 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
 
 
             std::vector<Vector2> force_components = std::vector<Vector2>();
-            for (size_t i=0; i<partial_force_effects.size(); i+=1) {
+            for (size_t i=0; i<FORCE_COUNT; i+=1) {
                 force_components.push_back({0,0});
             }
 
@@ -575,8 +573,8 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
                         //continue;
                     }
 
-                    for (size_t i=0; i<partial_force_effects.size(); i+=1) {
-                        force_components[i] = Vector2Add(force_components[i], (partial_force_effects[i])(nearby_qualities, position_difference));
+                    for (size_t i=0; i<FORCE_COUNT; i+=1) {
+                        force_components[i] = Vector2Add(force_components[i], (PARTIAL_FORCE_FUNCTIONS[i])(nearby_qualities, position_difference));
                     }
                 }
             }
@@ -597,8 +595,8 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
                     //continue;
                 }
 
-                for (size_t i=0; i<partial_force_effects.size(); i+=1) {
-                    force_components[i] = Vector2Add(force_components[i], (partial_force_effects[i])(nearby_qualities, position_difference));
+                for (size_t i=0; i<FORCE_COUNT; i+=1) {
+                    force_components[i] = Vector2Add(force_components[i], (PARTIAL_FORCE_FUNCTIONS[i])(nearby_qualities, position_difference));
                 }
 
                 /*
@@ -618,8 +616,8 @@ void Simulation::threadDetermineForces(size_t start_inclusive, size_t end_exclus
             }
 
             Vector2 final_force = {0,0};
-            for (size_t i=0; i<partial_force_effects.size(); i+=1) {
-                final_force = Vector2Add(final_force, (final_force_effects[i])(particle->getQualities(), Vector2Add(force_components[i], base_force_components[i])));
+            for (size_t i=0; i<FORCE_COUNT; i+=1) {
+                final_force = Vector2Add(final_force, (FINAL_FORCE_FUNCTIONS[i])(particle->getQualities(), Vector2Add(force_components[i], base_force_components[i])));
             }
 
             Vector2 acceleration = Vector2Scale(final_force, 1/qualities.getQuality(Mass));

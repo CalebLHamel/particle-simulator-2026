@@ -7,9 +7,11 @@
 
 typedef Vector2 (*ForceFunction)(Qualities qualities, Vector2 position_difference);
 
+#define FORCE_COUNT (1)
 Vector2 partialForce(Qualities qualities, Vector2 position_difference);
 Vector2 finalizeForce(Qualities particle_qualities, Vector2 partial_force);
-
+constexpr ForceFunction PARTIAL_FORCE_FUNCTIONS[] = {partialForce};
+constexpr ForceFunction FINAL_FORCE_FUNCTIONS[] = {finalizeForce};
 /*
 class IForceEffects {
     public:
@@ -40,15 +42,9 @@ protected:
     // The default color of this type of particle.
     Color default_color;
 
-    std::vector<ForceFunction> partial_force_effects;
-    std::vector<ForceFunction> final_force_effects;
-
 public:
     // Constructor.
-    ParticleType(float radius, Qualities qualities, Color color, std::vector<ForceFunction> partial_force_effects, std::vector<ForceFunction> final_force_effects);
-
-    std::vector<ForceFunction> getPartialForceEffects();
-    std::vector<ForceFunction> getFinalForceEffects();
+    ParticleType(float radius, Qualities qualities, Color color);
 
     // Gets the value of a default quality of the particle type.
     float getQuality(QualityTypes type);
