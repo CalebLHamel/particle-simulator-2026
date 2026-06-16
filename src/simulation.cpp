@@ -233,7 +233,7 @@ std::vector<Particle*>* Chunk::getParticlesInSubchunk(size_t x, size_t y) {
  * local_radius             : Specifies the distance at which the particle forces should still be calculated on a per-particle basis.
  * max_collision_iterations : Specifies the limit of how many iterations the collision solver is allowed to process.
  */
-Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, size_t max_collision_iterations, size_t max_threads, size_t chunk_divisions) {
+Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, size_t max_collision_iterations, size_t chunk_divisions) {
     // Set fields.
     this->count = 0;
     this->chunk_size = chunk_size;
@@ -326,11 +326,6 @@ Simulation::Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size,
             }
         }
     }
-
-    // Set the max threads (used for force checking).
-    unsigned int cores_available = std::thread::hardware_concurrency();
-    size_t attempted_threads = (max_threads == 0) ? 1 : max_threads;
-    this->max_threads = std::min((size_t)cores_available-1, max_threads-1);
 
     thread_pool.Start();
 }

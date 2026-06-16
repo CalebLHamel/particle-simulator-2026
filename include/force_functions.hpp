@@ -101,14 +101,33 @@ Vector2 particleFunny(Particle* particle, Particle* other_particle) {
 
     Vector2 direction = Vector2Normalize(position_difference);
     float damper = 0;
-    if (true || (charge > 0 && other_charge < 0) || (charge < 0 && other_charge < 0)) {
-        damper = funny_magnitude * Vector2DotProduct(Vector2Subtract(other_particle->getVelocity(), particle->getVelocity()), direction);
+    if ((charge > 0 && other_charge < 0) || (charge < 0 && other_charge < 0)) {
+        damper = funny_magnitude; // * Vector2DotProduct(Vector2Subtract(other_particle->getVelocity(), particle->getVelocity()), direction);
     }
 
-    Vector2 damper_vector = Vector2Scale(direction, damper);
+    Vector2 damper_vector = Vector2Scale(Vector2Subtract(other_particle->getVelocity(), particle->getVelocity()), damper);
     return Vector2Add(damper_vector, complete);
 }
 
+
+Vector2 keepAwayPartial(Qualities qualities, Vector2 position_difference) {
+    return {0,0};
+}
+Vector2 keepAwayFinal(Particle* particle, Vector2 partial_force) {
+    return {0,0};
+}
+Vector2 particleKeepAway(Particle* particle, Particle* other_particle) {
+    Vector2 position_difference = Vector2Subtract(other_particle->getPosition(), particle->getPosition());
+    float distance = Vector2Length(position_difference);
+
+    if (distance < 0.8*(particle->getRadius() + other_particle->getRadius())) {
+        return {0,0};
+    }
+    
+    Vector2 direction = Vector2Normalize(position_difference);
+    float scale = particle->getQuality(Mass) * other_particle->getQuality(Mass) / (distance*distance*distance*2);
+    return Vector2Scale(direction, -scale);
+}
 
 
 
@@ -130,8 +149,9 @@ Vector2 particleFunny(Particle* particle, Particle* other_particle) {
 // It works, but is just tedious and requires being careful with ordering.
 constexpr PartialForceFunction PARTIAL_FORCE_FUNCTIONS[FORCE_COUNT] = {
     //basicPartialForce<Mass>,
-    //funnyPartial,
-    basicPartialForce<Charge>,
+    //keepAwayPartial,
+    funnyPartial,
+    //basicPartialForce<Charge>,
     //    basicPartialForce<Strange_1>,
     //    basicPartialForce<Strange_2>,
     //    basicPartialForce<Strange_3>,
@@ -144,8 +164,9 @@ constexpr PartialForceFunction PARTIAL_FORCE_FUNCTIONS[FORCE_COUNT] = {
 };
 constexpr FinalForceFunction FINAL_FORCE_FUNCTIONS[FORCE_COUNT] = {
     //basicFinalForce<Mass,1>,
-    //funnyFinal,
-    basicFinalForce<Charge,-1>,
+    //keepAwayFinal,
+    funnyFinal,
+    //basicFinalForce<Charge,-1>,
     //    basicFinalForce<Strange_1,1>,
     //    basicFinalForce<Strange_1,-1>,
     //    basicFinalForce<Strange_1,1>,
@@ -158,8 +179,9 @@ constexpr FinalForceFunction FINAL_FORCE_FUNCTIONS[FORCE_COUNT] = {
 };
 constexpr ParticleForceFunction PARTICLE_FORCE_FUNCTIONS[FORCE_COUNT] = {
     //particleForce<Mass,Mass,1>,
-    //particleFunny,
-    particleForce<Charge,Charge,-1>,
+    //particleKeepAway,
+    particleFunny,
+    //particleForce<Charge,Charge,-1>,
     //    particleForce<Strange_1,1>,
     //    particleForce<Strange_1,-1>,
     //    particleForce<Strange_1,1>,

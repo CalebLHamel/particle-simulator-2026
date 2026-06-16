@@ -44,57 +44,45 @@ int main()
     ParticleType test_particle_type1 = ParticleType(10.0, test_qualities1, Color{240, 50, 20, 255});
     
     Qualities test_qualities2 = Qualities();
-    test_qualities2.setQuality(QualityTypes::Mass, 15.0);
+    test_qualities2.setQuality(QualityTypes::Mass, 500.0);
     test_qualities2.setQuality(QualityTypes::Charge, 0.0);
-    test_qualities2.setQuality(QualityTypes::Restitution, 0.1);
-    ParticleType test_particle_type2 = ParticleType(4.0, test_qualities2, Color{220, 220, 20, 255});
+    test_qualities2.setQuality(QualityTypes::Restitution, 1);
+    ParticleType test_particle_type2 = ParticleType(20.0, test_qualities2, Color{220, 220, 20, 255});
 
     Qualities test_qualities3 = Qualities();
     test_qualities3.setQuality(QualityTypes::Mass, 10.0);
     test_qualities3.setQuality(QualityTypes::Charge, -30.0);
-    test_qualities3.setQuality(QualityTypes::Restitution, 0.95);
-    ParticleType test_particle_type3 = ParticleType(10.0, test_qualities3, Color{40, 40, 200, 255});
+    test_qualities3.setQuality(QualityTypes::Restitution, 1);
+    ParticleType test_particle_type3 = ParticleType(5.0, test_qualities3, Color{40, 40, 250, 255});
 
     Qualities test_qualities4 = Qualities();
-    test_qualities4.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities4.setQuality(QualityTypes::Mass, 100.0);
     test_qualities4.setQuality(QualityTypes::Strange_1, 8.0);
     test_qualities4.setQuality(QualityTypes::Charge, -40.0);
-    test_qualities4.setQuality(QualityTypes::Restitution, 0.8);
+    test_qualities4.setQuality(QualityTypes::Restitution, 0.7);
     ParticleType test_particle_type4 = ParticleType(10.0, test_qualities4, Color{20, 220, 220, 255});
     
     Qualities test_qualities5 = Qualities();
-    test_qualities5.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities5.setQuality(QualityTypes::Mass, 100.0);
     test_qualities5.setQuality(QualityTypes::Strange_2, 8.0);
     test_qualities5.setQuality(QualityTypes::Charge, 0.0);
-    test_qualities5.setQuality(QualityTypes::Restitution, 0.8);
+    test_qualities5.setQuality(QualityTypes::Restitution, 0.7);
     ParticleType test_particle_type5 = ParticleType(10.0, test_qualities5, Color{220, 220, 20, 255});
     
     Qualities test_qualities6 = Qualities();
-    test_qualities6.setQuality(QualityTypes::Mass, 10.0);
+    test_qualities6.setQuality(QualityTypes::Mass, 100.0);
     test_qualities6.setQuality(QualityTypes::Strange_3, 8.0);
     test_qualities6.setQuality(QualityTypes::Charge, 40.0);
-    test_qualities6.setQuality(QualityTypes::Restitution, 0.8);
+    test_qualities6.setQuality(QualityTypes::Restitution, 0.7);
     ParticleType test_particle_type6 = ParticleType(10.0, test_qualities6, Color{220, 20, 220, 255});
     
     ParticleType types[7] = {test_particle_type0, test_particle_type1, test_particle_type2, test_particle_type3, test_particle_type4, test_particle_type5, test_particle_type6};
     
-
-    // TODO: I did the thread pooling (stack overflow did the thread pooling).
-    /*
-     * My machine has 20 cores. I found setting the max threads between 6 and 8 was best. Too few, and nothing parallelizes.
-     *      Too many, and the scheduler seems to just put them on the same core.
-     *      I also didn't bother to figure out how to pool threads, so there is a greater cost to using them.
-     * A max chunks of ~1000 is recommended. Chunks help forces by letting some qualities pool together at the cost of precision,
-     *      but too many chunks leads to too many iterations and becomes harmful.
-     * Keep the chunk size larger than the smallest particle radius.
-     *      Also make sure that the subdivisions are larger than the smallest particle radius too.
-     * In most cases, very few collisions checks are needed, I usually set it between 10 and 20.
-     */
     // The simulation itself.
-    size_t      chunks_wide  = 50;
-    size_t      chunks_tall  = 50;
-    float       chunk_size   = 450;
-    Simulation  simulation   = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10, 7, 30);
+    size_t      chunks_wide  = 40;
+    size_t      chunks_tall  = 40;
+    float       chunk_size   = 600;
+    Simulation  simulation   = Simulation(chunks_wide, chunks_tall, chunk_size, 1500, 10, 15);
     
     // Main loop
     //--------------------------------------------------------------------------------------
@@ -168,10 +156,10 @@ int main()
         // Used during some demonstrations. Just fills the simulation space with a random assortment of particles as set up inside the loop.
         if (IsKeyPressed(KEY_P)) {
             for (size_t i=0; i<500; i+=1) {
-                float x = GetRandomValue(0, chunks_wide*chunk_size);
-                float y = GetRandomValue(0, chunks_tall*chunk_size);
+                float x = GetRandomValue(0 + chunks_wide*chunk_size/4, chunks_wide*chunk_size - chunks_wide*chunk_size/4);
+                float y = GetRandomValue(0 + chunks_tall*chunk_size/4, chunks_tall*chunk_size - chunks_wide*chunk_size/4);
                 Vector2 pos = {x,y};
-                Particle new_particle = Particle::makeParticleFromType(types[GetRandomValue(4,6)], pos, {(float)GetRandomValue(-1,1),(float)GetRandomValue(-1,1)});
+                Particle new_particle = Particle::makeParticleFromType(types[GetRandomValue(4,6)], pos, {(y-chunks_tall*chunk_size/2)/5000, -(x-chunks_wide*chunk_size/2)/5000});
                 simulation.addParticle(new_particle);
             }
         }
@@ -204,7 +192,7 @@ int main()
             ClearBackground(Color{100,100,100,255});
 
             // White simualtion area.
-            DrawRectangle((-camera_offset.x-camera_position.x)/camera_scale+camera_offset.x,(-camera_offset.y-camera_position.y)/camera_scale+camera_offset.y,chunks_wide*chunk_size/camera_scale, chunks_tall*chunk_size/camera_scale, RAYWHITE);
+            DrawRectangle((-camera_offset.x-camera_position.x)/camera_scale+camera_offset.x,(-camera_offset.y-camera_position.y)/camera_scale+camera_offset.y,chunks_wide*chunk_size/camera_scale, chunks_tall*chunk_size/camera_scale, BLACK);
             
             // The bound of where the camera can see particles.
             float camera_left_bound = std::max(0.0f,(camera_position.x + camera_offset.x) - (screenWidth/2) * camera_scale);

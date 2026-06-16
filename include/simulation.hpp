@@ -175,7 +175,7 @@ class Simulation {
 
     public:
         // Constructor.
-        Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, size_t max_collision_iterations, size_t max_threads, size_t chunk_divisions);
+        Simulation(size_t chunks_wide, size_t chunks_tall, float chunk_size, float local_radius, size_t max_collision_iterations, size_t chunk_divisions);
 
         // Adds a particle to the simulation.
         void addParticle(Particle particle);
