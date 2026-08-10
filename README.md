@@ -9,3 +9,5 @@ Part of my intent for this project is to re-do the particle simulator with bette
 
 Here's a google drive link to some videos that I may add more to as I go along:
 https://drive.google.com/drive/folders/19TWuLGhYAlDXtlmH2cYbZSOZTL9R0LlX?usp=sharing
+
+Do note that there is a multithreaded version on a separate branch from main that is ahead of main by quite a bit.
