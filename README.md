@@ -2,10 +2,12 @@ This project uses Raylib which is is licensed under an unmodified zlib/libpng li
 The details of this license can be found in the RaylibLicense folder.
 
 I made this project with the intent of learning more about C++.
-I also took a bit of time to explore what CMake could do, and use it to build this project.
+I also took a bit of time to explore what CMake could do, and used it to build this project.
 
 A while back, I made a rudimentary particle simulator in Python. 
-Part of my intent for this project is to re-do the particle simulator with better programming practices.
+Part of my intent for this project was to re-do the particle simulator with better programming practices.
 
 Here's a google drive link to some videos that I may add more to as I go along:
 https://drive.google.com/drive/folders/19TWuLGhYAlDXtlmH2cYbZSOZTL9R0LlX?usp=sharing
+
+I also took some time to learn how to multithread parts of it. The multithreading branch is a bit farther ahead of main.
